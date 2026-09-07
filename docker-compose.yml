@@ -1,0 +1,88 @@
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ShilpSetu AI — Multi-Container Stack
+#
+#   db       →  PostgreSQL 16 + pgvector (port 5432)
+#   backend  →  FastAPI AI engine         (port 8000)
+#   web      →  Next.js buyer dashboard   (port 3000)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL + pgvector ─────────────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: shilpsetu-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shilpsetu
+      POSTGRES_PASSWORD: shilpsetu_secret
+      POSTGRES_DB: shilpsetu
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - shilpsetu-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shilpsetu -d shilpsetu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── FastAPI Backend ───────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shilpsetu-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://shilpsetu:shilpsetu_secret@db:5432/shilpsetu
+      DATABASE_URL_SYNC: postgresql+psycopg2://shilpsetu:shilpsetu_secret@db:5432/shilpsetu
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      SQL_ECHO: "0"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend-uploads:/app/uploads
+    networks:
+      - shilpsetu-net
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/healthz'); assert r.status_code == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Next.js Web Dashboard ─────────────────────────────────────────────────
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: shilpsetu-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks:
+      - shilpsetu-net
+    depends_on:
+      backend:
+        condition: service_healthy
+
+# ── Shared network ──────────────────────────────────────────────────────────
+networks:
+  shilpsetu-net:
+    driver: bridge
+
+# ── Persistent volumes ──────────────────────────────────────────────────────
+volumes:
+  pgdata:
+  backend-uploads:

@@ -1,0 +1,2 @@
+# This folder holds static assets for Next.js (like favicons and images).
+# Keeping it here so the Docker build succeeds.

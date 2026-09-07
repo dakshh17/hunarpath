@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ShilpSetu — Production Caddy Reverse Proxy Configuration
+# Automatic Let's Encrypt HTTPS certificates for custom domain or subdomain
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Global options
+{
+    email {$ACME_EMAIL:admin@example.com}
+    admin off
+}
+
+# ── API Gateway (e.g. api.shilpsetu.in or localhost / IP) ─────────────────────
+{$API_DOMAIN::8000} {
+    encode gzip zstd
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+    }
+
+    # Proxy to FastAPI backend
+    reverse_proxy backend:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# ── Web Buyer Marketplace (e.g. shilpsetu.in or :80) ──────────────────────────
+{$WEB_DOMAIN::80} {
+    encode gzip zstd
+
+    # Proxy to Next.js Web Frontend
+    reverse_proxy web:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

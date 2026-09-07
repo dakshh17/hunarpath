@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Leaflet overrides ─────────────────────────────────────────────────────── */
+@import "leaflet/dist/leaflet.css";
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.75rem;
+  z-index: 0;
+}
+
+/* ── Custom utilities ──────────────────────────────────────────────────────── */
+
+@layer components {
+  .card-elevated {
+    @apply bg-white rounded-2xl shadow-md border border-gray-100 p-6;
+  }
+
+  .btn-saffron {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           bg-saffron-500 px-6 py-3 text-base font-semibold text-white
+           shadow-sm transition hover:bg-saffron-600 active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-forest {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           bg-forest-500 px-6 py-3 text-base font-semibold text-white
+           shadow-sm transition hover:bg-forest-600 active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           border-2 border-saffron-500 px-6 py-3 text-base font-semibold
+           text-saffron-500 transition hover:bg-saffron-50 active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-gray-300 bg-white px-4 py-3
+           text-base outline-none transition
+           focus:border-saffron-500 focus:ring-2 focus:ring-saffron-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
+           text-xs font-semibold;
+  }
+}
+
+/* ── Base styles ───────────────────────────────────────────────────────────── */
+
+body {
+  @apply bg-ivory text-gray-900 antialiased;
+}
