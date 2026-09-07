@@ -59,16 +59,29 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run DB migrations & seed mock data on startup; dispose pool on shutdown."""
-    logger.info("Starting ShilpSetu AI backend …")
-    await init_db()
+    # Run DB migrations (with graceful retry & fallback for transient cloud network startup)
+    db_initialized = False
+    for attempt in range(1, 4):
+        try:
+            logger.info("Initializing database connection (attempt %d/3)...", attempt)
+            await init_db()
+            db_initialized = True
+            logger.info("Database schema initialized successfully.")
+            break
+        except Exception as exc:
+            logger.warning("Database init failed on attempt %d: %s", attempt, exc)
+            if attempt < 3:
+                await asyncio.sleep(2)
 
-    # Seed mock data (safe to call repeatedly – idempotent guard inside)
-    try:
-        from mock_data import seed as seed_database
-        await seed_database()
-        logger.info("Mock data seed completed.")
-    except Exception:
-        logger.exception("Mock data seeding failed – continuing without seed data.")
+    if db_initialized:
+        try:
+            from mock_data import seed as seed_database
+            await seed_database()
+            logger.info("Mock data seed completed.")
+        except Exception:
+            logger.exception("Mock data seeding failed – continuing without seed data.")
+    else:
+        logger.error("Could not connect to external DB during startup. Backend will continue booting.")
 
     yield
 
