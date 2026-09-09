@@ -19,15 +19,22 @@ import re
 from typing import Any, Optional
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+GROQ_MODEL: str = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
+GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
-HTTP_TIMEOUT: float = 60.0  # local LLMs can be slow on first load
+HTTP_TIMEOUT: float = 30.0
 
 # ---------------------------------------------------------------------------
 # System prompt – strict fact-grounding
@@ -208,7 +215,65 @@ def _regex_extract(transcript: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Ollama LLM call
+# Cloud LLM: Groq (Llama-3.3-70B / 8B)
+# ---------------------------------------------------------------------------
+
+async def _call_groq(transcript: str) -> Optional[dict[str, Any]]:
+    """
+    Call the Groq cloud LLM API using OpenAI-compatible format with JSON mode.
+    Returns parsed dictionary or None on failure/missing key.
+    """
+    if not GROQ_API_KEY:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _USER_PROMPT_TEMPLATE.format(transcript=transcript),
+            },
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{GROQ_BASE_URL}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=HTTP_TIMEOUT,
+            )
+            resp.raise_for_status()
+
+        data = resp.json()
+        raw_content = data["choices"][0]["message"]["content"]
+
+        # Clean markdown wrappers if any
+        raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content.strip())
+        raw_content = re.sub(r"\s*```$", "", raw_content.strip())
+
+        parsed = json.loads(raw_content)
+        logger.info("Groq Cloud LLM (%s) successfully cataloged product.", GROQ_MODEL)
+        return parsed
+
+    except httpx.HTTPStatusError as exc:
+        logger.warning("Groq API HTTP error %s: %s", exc.response.status_code, exc.response.text[:200])
+    except Exception as exc:
+        logger.warning("Groq API call failed: %s", exc)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Local LLM: Ollama call
 # ---------------------------------------------------------------------------
 
 async def _call_ollama(transcript: str) -> Optional[dict[str, Any]]:
@@ -270,16 +335,17 @@ async def _call_ollama(transcript: str) -> Optional[dict[str, Any]]:
 
 async def extract_and_translate_catalog(transcript: str) -> dict[str, Any]:
     """
-    Extract structured product metadata from a free-form artisan
-    transcript.
+    Extract structured product metadata from a free-form artisan transcript.
 
-    Tries the local Ollama LLM first; falls back to a rule-based regex
-    parser if the LLM is unavailable.
+    Tries:
+      1. Groq Cloud LLM (Llama-3.3-70B, high speed, production-ready)
+      2. Local Ollama LLM (qwen2.5 / llama3)
+      3. Rule-based regex parser (offline zero-dependency safety net)
 
     Parameters
     ----------
     transcript : str
-        Plain-text transcript (English or transliterated Indic).
+        Plain-text transcript (English or Indic).
 
     Returns
     -------
@@ -302,10 +368,15 @@ async def extract_and_translate_catalog(transcript: str) -> dict[str, Any]:
             "description_hi": "कोई विवरण उपलब्ध नहीं।",
         }
 
-    # Attempt LLM extraction
-    llm_result = await _call_ollama(transcript)
+    # 1. Try Groq Cloud LLM first (fastest, production standard)
+    llm_result = await _call_groq(transcript)
+
+    # 2. Try local Ollama if Groq was not configured or failed
+    if llm_result is None:
+        llm_result = await _call_ollama(transcript)
+
+    # If an LLM succeeded, validate required keys
     if llm_result is not None:
-        # Ensure all required keys are present (LLM may omit some)
         for key in (
             "craft_type", "material", "primary_color", "labor_days",
             "raw_cost", "title_en", "title_hi", "description_en",
@@ -314,6 +385,6 @@ async def extract_and_translate_catalog(transcript: str) -> dict[str, Any]:
             llm_result.setdefault(key, None)
         return llm_result
 
-    # Fallback: regex parser
+    # 3. Final Fallback: regex parser
     logger.info("Using regex fallback cataloger.")
     return _regex_extract(transcript)
