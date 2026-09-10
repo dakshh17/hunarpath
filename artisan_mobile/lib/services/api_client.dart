@@ -13,7 +13,7 @@ class ApiClient {
   /// Backend base URL – use 10.0.2.2 for Android emulator → host localhost.
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.126.25.76:8000',
+    defaultValue: 'https://shilpsetu-1.onrender.com',
   );
 
   final http.Client _client;
