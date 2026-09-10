@@ -486,8 +486,18 @@ async def demand_radar(
 
 
 # ---------------------------------------------------------------------------
-# Health-check
+# Health-check & Root Index
 # ---------------------------------------------------------------------------
+
+@app.get("/", tags=["Ops"], summary="Root endpoint")
+async def root():
+    return {
+        "service": "ShilpSetu AI Platform Gateway",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/healthz",
+    }
+
 
 @app.get("/healthz", tags=["Ops"], summary="Liveness probe")
 async def healthz():
