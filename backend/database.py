@@ -40,6 +40,16 @@ if _DATABASE_URL.startswith("postgresql://"):
         "postgresql://", "postgresql+asyncpg://", 1
     )
 
+# Clean query params: asyncpg expects ssl=require or sslcontext rather than sslmode=require
+if "asyncpg" in _DATABASE_URL:
+    # Remove sslmode / channel_binding query params if present, asyncpg uses connect_args
+    import re
+    _DATABASE_URL = re.sub(r"[?&]channel_binding=[^&]*", "", _DATABASE_URL)
+    _DATABASE_URL = re.sub(r"[?&]sslmode=[^&]*", "", _DATABASE_URL)
+    # Ensure clean query string ending
+    if _DATABASE_URL.endswith("?"):
+        _DATABASE_URL = _DATABASE_URL[:-1]
+
 IS_POSTGRES: bool = _DATABASE_URL.startswith("postgresql")
 IS_SQLITE: bool = _DATABASE_URL.startswith("sqlite")
 
