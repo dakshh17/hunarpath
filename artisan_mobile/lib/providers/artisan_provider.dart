@@ -241,10 +241,11 @@ class ArtisanProvider extends ChangeNotifier {
 
   // ── Catalog Ingest ─────────────────────────────────────────────────
 
-  /// Run the full ingest pipeline: image + audio → AI services.
+  /// Run the full ingest pipeline: image + live transcript / audio → AI services.
   Future<void> ingestProduct({
     required File imageFile,
-    required File audioFile,
+    File? audioFile,
+    String? transcript,
   }) async {
     isProcessing = true;
     processingError = null;
@@ -256,6 +257,7 @@ class ArtisanProvider extends ChangeNotifier {
       final result = await _api.ingestProduct(
         imageFile: imageFile,
         audioFile: audioFile,
+        transcript: transcript,
         artisanId: profile.id,
         language: profile.dialect,
       );

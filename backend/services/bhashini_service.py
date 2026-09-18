@@ -37,7 +37,7 @@ BHASHINI_INFERENCE_KEY: Optional[str] = os.getenv("BHASHINI_INFERENCE_KEY")
 # Supported language codes (ISO 639-1 / ULCA)
 SUPPORTED_LANGS = {"hi", "gu", "bn", "ta", "te", "mr", "kn", "ml", "pa", "or", "en"}
 
-HTTP_TIMEOUT: float = 30.0  # seconds
+HTTP_TIMEOUT: float = 6.0  # seconds
 
 # ---------------------------------------------------------------------------
 # Offline fallback transcripts keyed by (lang_code, keyword hint)

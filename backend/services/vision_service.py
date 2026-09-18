@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-CANVAS_SIZE: int = 2048
+CANVAS_SIZE: int = 1024
 PADDING_RATIO: float = 0.10  # 10 % outer padding on each side
 CLAHE_CLIP_LIMIT: float = 2.5
 CLAHE_GRID: tuple[int, int] = (8, 8)
@@ -35,32 +35,39 @@ OUTPUT_QUALITY: int = 92
 def _remove_background(image_bytes: bytes) -> np.ndarray:
     """
     Strip the background using rembg (U²-Net model).
-
-    Returns an RGBA numpy array with the foreground isolated on a
-    transparent background.
+    Downscales input to max 600x600 first to prevent OOM crashes on free-tier 512MB RAM.
+    Returns an RGBA numpy array with the foreground isolated on a transparent background.
     """
     try:
         from rembg import remove as rembg_remove, new_session
-    except ImportError:
+
+        # Pre-scale image to 600x600 max to keep memory under 80MB and runtime under 1s
+        pil_in = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        pil_in.thumbnail((600, 600), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        pil_in.save(buf, format="PNG")
+        small_bytes = buf.getvalue()
+
+        session = new_session("u2netp")
+        result_bytes: bytes = rembg_remove(small_bytes, session=session)
+        pil_img = Image.open(io.BytesIO(result_bytes)).convert("RGBA")
+        return np.array(pil_img)
+    except Exception as exc:
         logger.warning(
-            "rembg is not installed – returning original image without "
-            "background removal."
+            "Background removal failed or rembg unavailable (%s) – using enhanced fallback.",
+            exc,
         )
         arr = np.frombuffer(image_bytes, dtype=np.uint8)
         img_bgr = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
         if img_bgr is None:
             raise ValueError("Could not decode input image bytes.")
+        if len(img_bgr.shape) == 2:
+            img_bgr = cv2.cvtColor(img_bgr, cv2.COLOR_GRAY2BGR)
         if img_bgr.shape[2] == 3:
             img_bgra = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2BGRA)
         else:
             img_bgra = img_bgr
         return cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGBA)
-
-    # Use the lightweight 'u2netp' model to prevent memory crashes in Docker
-    session = new_session("u2netp")
-    result_bytes: bytes = rembg_remove(image_bytes, session=session)
-    pil_img = Image.open(io.BytesIO(result_bytes)).convert("RGBA")
-    return np.array(pil_img)
 
 
 def _apply_clahe(rgba: np.ndarray) -> np.ndarray:

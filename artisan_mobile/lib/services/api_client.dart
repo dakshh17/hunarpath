@@ -179,10 +179,11 @@ class ApiClient {
   // POST /api/v1/catalog/ingest
   // ─────────────────────────────────────────────────────────────────
 
-  /// Sends a product image and artisan voice note for AI processing.
+  /// Sends a product image, optional audio note, and live transcript for AI processing.
   Future<IngestResult> ingestProduct({
     required File imageFile,
-    required File audioFile,
+    File? audioFile,
+    String? transcript,
     required String artisanId,
     String language = 'hi',
   }) async {
@@ -190,34 +191,59 @@ class ApiClient {
 
     final request = http.MultipartRequest('POST', uri)
       ..fields['artisan_id'] = artisanId
-      ..fields['language'] = language
-      ..files.add(await http.MultipartFile.fromPath(
-        'image',
-        imageFile.path,
-        contentType: MediaType('image', 'jpeg'),
-      ))
-      ..files.add(await http.MultipartFile.fromPath(
+      ..fields['language'] = language;
+
+    if (transcript != null && transcript.trim().isNotEmpty) {
+      request.fields['transcript'] = transcript.trim();
+    }
+
+    request.files.add(await http.MultipartFile.fromPath(
+      'image',
+      imageFile.path,
+      contentType: MediaType('image', 'jpeg'),
+    ));
+
+    if (audioFile != null && await audioFile.exists()) {
+      request.files.add(await http.MultipartFile.fromPath(
         'audio',
         audioFile.path,
         contentType: MediaType('audio', 'wav'),
       ));
+    }
 
     if (_authToken != null) {
       request.headers['Authorization'] = 'Bearer $_authToken';
     }
 
-    final streamedResponse = await _client.send(request);
-    final response = await http.Response.fromStream(streamedResponse);
+    try {
+      final streamedResponse = await _client.send(request).timeout(
+        const Duration(seconds: 40),
+        onTimeout: () {
+          throw ApiException(
+            statusCode: 408,
+            message: 'Processing timed out. Please try again with a clear photo.',
+          );
+        },
+      );
+      final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode != 200) {
+      if (response.statusCode != 200) {
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: 'Catalog ingest failed: ${response.body}',
+        );
+      }
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      return IngestResult.fromJson(json);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
       throw ApiException(
-        statusCode: response.statusCode,
-        message: 'Catalog ingest failed: ${response.body}',
+        statusCode: 500,
+        message: 'Could not connect to server ($e)',
       );
     }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return IngestResult.fromJson(json);
   }
 
   // ─────────────────────────────────────────────────────────────────

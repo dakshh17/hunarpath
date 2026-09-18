@@ -151,32 +151,60 @@ def _synthetic_embedding(dim: int = 384) -> list[float]:
 )
 async def catalog_ingest(
     image: UploadFile = File(..., description="Raw product photograph"),
-    audio: UploadFile = File(..., description="Artisan voice note (WAV/MP3)"),
+    audio: Optional[UploadFile] = File(None, description="Artisan voice note (optional if transcript sent)"),
+    transcript: Optional[str] = Form(None, description="Live speech-to-text transcript from mobile device"),
     language: str = Form("hi", description="ISO 639-1 dialect code"),
     artisan_id: str = Form(..., description="Artisan UUID"),
 ):
     """
-    Concurrently processes the product image and artisan voice note,
+    Concurrently processes the product image and artisan voice note / live transcript,
     then chains the transcript through the cataloger and pricing
-    services.  Returns a unified payload ready for client review.
+    services. Returns a unified payload ready for client review.
     """
     # Read uploaded bytes
     image_bytes = await image.read()
-    audio_bytes = await audio.read()
+    audio_bytes = await audio.read() if audio else b""
 
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Empty image file.")
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="Empty audio file.")
 
-    # ── Concurrent: vision + ASR ──────────────────────────────────────
-    studio_task = asyncio.to_thread(process_studio_image, image_bytes)
-    asr_task = transcribe_indic_audio(audio_bytes, lang_code=language)
+    # ── 1. Vision Studio Processing (with 15s safety timeout) ─────────
+    try:
+        studio_bytes = await asyncio.wait_for(
+            asyncio.to_thread(process_studio_image, image_bytes),
+            timeout=15.0,
+        )
+    except Exception as exc:
+        logger.warning("Studio vision processing timed out or failed (%s); using original image.", exc)
+        studio_bytes = image_bytes
 
-    studio_bytes, transcript = await asyncio.gather(studio_task, asr_task)
+    # ── 2. Resolve Transcript: Client Live STT vs Backend ASR ─────────
+    resolved_transcript = ""
+    if transcript and transcript.strip():
+        resolved_transcript = transcript.strip()
+        logger.info("Using on-device live transcript provided by client: '%s'", resolved_transcript)
+    elif audio_bytes:
+        try:
+            resolved_transcript = await asyncio.wait_for(
+                transcribe_indic_audio(audio_bytes, lang_code=language),
+                timeout=8.0,
+            )
+        except Exception as exc:
+            logger.warning("ASR timed out or failed (%s); falling back to default.", exc)
+            resolved_transcript = "हस्तनिर्मित उत्पाद"
+    else:
+        resolved_transcript = "हस्तनिर्मित शिल्प उत्पाद"
 
-    # ── Sequential: cataloger → pricing ───────────────────────────────
-    catalog_data = await extract_and_translate_catalog(transcript)
+    # ── 3. Cataloger → Pricing ─────────────────────────────────────────
+    try:
+        catalog_data = await asyncio.wait_for(
+            extract_and_translate_catalog(resolved_transcript),
+            timeout=12.0,
+        )
+    except Exception as exc:
+        logger.warning("Catalog extraction timed out (%s); using regex fallback.", exc)
+        from services.cataloger_service import _regex_fallback_catalog
+        catalog_data = _regex_fallback_catalog(resolved_transcript)
 
     raw_cost = catalog_data.get("raw_cost") or 0.0
     labor_days = catalog_data.get("labor_days") or 1.0
@@ -193,7 +221,7 @@ async def catalog_ingest(
 
     return CatalogIngestResponse(
         studio_image_base64=studio_b64,
-        raw_transcript=transcript,
+        raw_transcript=resolved_transcript,
         catalog_metadata=CatalogMetadata(**catalog_data),
         price_recommendation=PriceRecommendation(**price_data),
         artisan_id=artisan_id,

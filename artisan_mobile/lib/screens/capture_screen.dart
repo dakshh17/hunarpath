@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../providers/artisan_provider.dart';
 import '../services/audio_feedback_service.dart';
@@ -13,7 +14,7 @@ import 'review_screen.dart';
 
 /// Three-step capture flow:
 ///   1. Camera viewport → photograph the product.
-///   2. Push-to-talk → record artisan description.
+///   2. Push-to-talk → live transcript in artisan's native language + audio recording.
 ///   3. Loading animation → AI processing with spoken status.
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -27,11 +28,16 @@ class _CaptureScreenState extends State<CaptureScreen>
   final _audio = AudioFeedbackService();
   final _picker = ImagePicker();
   final _recorder = AudioRecorder();
+  final _speech = stt.SpeechToText();
 
   int _step = 1; // 1 = camera, 2 = voice, 3 = processing
   File? _capturedImage;
   File? _recordedAudio;
   bool _isRecording = false;
+  bool _speechEnabled = false;
+
+  String _liveTranscript = '';
+  final _transcriptController = TextEditingController();
 
   late AnimationController _pulseController;
 
@@ -43,16 +49,38 @@ class _CaptureScreenState extends State<CaptureScreen>
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
+    _initSpeech();
+
     // Speak camera instruction after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _audio.capturePhoto();
     });
   }
 
+  Future<void> _initSpeech() async {
+    try {
+      _speechEnabled = await _speech.initialize(
+        onError: (val) => debugPrint('SpeechToText Error: $val'),
+        onStatus: (val) {
+          if (val == 'done' || val == 'notListening') {
+            if (mounted && _isRecording) {
+              setState(() => _isRecording = false);
+            }
+          }
+        },
+      );
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('SpeechToText initialization failed: $e');
+    }
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
     _recorder.dispose();
+    _speech.stop();
+    _transcriptController.dispose();
     super.dispose();
   }
 
@@ -61,9 +89,9 @@ class _CaptureScreenState extends State<CaptureScreen>
   Future<void> _takePhoto() async {
     final XFile? xfile = await _picker.pickImage(
       source: ImageSource.camera,
-      maxWidth: 2048,
-      maxHeight: 2048,
-      imageQuality: 95,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
     );
     if (xfile != null) {
       setState(() {
@@ -77,9 +105,9 @@ class _CaptureScreenState extends State<CaptureScreen>
   Future<void> _pickFromGallery() async {
     final XFile? xfile = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 2048,
-      maxHeight: 2048,
-      imageQuality: 95,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
     );
     if (xfile != null) {
       setState(() {
@@ -90,64 +118,135 @@ class _CaptureScreenState extends State<CaptureScreen>
     }
   }
 
-  // ── Step 2: Push-to-talk recording ─────────────────────────────────
+  // ── Step 2: Push-to-talk recording with live speech-to-text ────────
+
+  String _getLocaleForDialect(String dialect) {
+    switch (dialect.toLowerCase()) {
+      case 'gu':
+        return 'gu_IN';
+      case 'bn':
+        return 'bn_IN';
+      case 'en':
+        return 'en_IN';
+      case 'hi':
+      default:
+        return 'hi_IN';
+    }
+  }
 
   Future<void> _toggleRecording() async {
     if (_isRecording) {
-      // Stop
-      final path = await _recorder.stop();
-      if (path != null) {
-        setState(() {
-          _recordedAudio = File(path);
-          _isRecording = false;
-        });
+      // Stop speech recognition
+      if (_speech.isListening) {
+        await _speech.stop();
       }
+
+      // Stop audio recording
+      String? audioPath;
+      try {
+        audioPath = await _recorder.stop();
+      } catch (_) {}
+
+      setState(() {
+        if (audioPath != null) {
+          _recordedAudio = File(audioPath);
+        }
+        _isRecording = false;
+        if (_liveTranscript.isNotEmpty) {
+          _transcriptController.text = _liveTranscript;
+        }
+      });
     } else {
       // Start recording
-      final tempDir = await getTemporaryDirectory();
-      final filePath =
-          '${tempDir.path}/artisan_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+      setState(() {
+        _liveTranscript = '';
+        _transcriptController.clear();
+        _isRecording = true;
+      });
 
-      if (await _recorder.hasPermission()) {
-        await _recorder.start(
-          const RecordConfig(
-            encoder: AudioEncoder.wav,
-            sampleRate: 16000,
-            numChannels: 1,
-          ),
-          path: filePath,
-        );
-        setState(() => _isRecording = true);
+      final dialect = context.read<ArtisanProvider>().profile.dialect;
+      final localeId = _getLocaleForDialect(dialect);
+
+      if (_speechEnabled) {
+        try {
+          await _speech.listen(
+            localeId: localeId,
+            onResult: (result) {
+              if (mounted) {
+                setState(() {
+                  _liveTranscript = result.recognizedWords;
+                  _transcriptController.text = result.recognizedWords;
+                });
+              }
+            },
+            listenOptions: stt.SpeechListenOptions(
+              listenMode: stt.ListenMode.dictation,
+              partialResults: true,
+              cancelOnError: false,
+            ),
+          );
+        } catch (e) {
+          debugPrint('Speech listen error: $e');
+        }
+      }
+
+      // Concurrently record audio
+      try {
+        final tempDir = await getTemporaryDirectory();
+        final filePath =
+            '${tempDir.path}/artisan_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+        if (await _recorder.hasPermission()) {
+          await _recorder.start(
+            const RecordConfig(
+              encoder: AudioEncoder.wav,
+              sampleRate: 16000,
+              numChannels: 1,
+            ),
+            path: filePath,
+          );
+        }
+      } catch (e) {
+        debugPrint('Audio recorder error: $e');
       }
     }
   }
 
   Future<void> _submitForProcessing() async {
-    if (_capturedImage == null || _recordedAudio == null) return;
+    if (_capturedImage == null) return;
+    final transcriptText = _transcriptController.text.trim();
+
+    if (_recordedAudio == null && transcriptText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('कृपया उत्पाद का विवरण बोलें (Please describe your product)'),
+        ),
+      );
+      return;
+    }
 
     setState(() => _step = 3);
 
     final provider = context.read<ArtisanProvider>();
     await provider.ingestProduct(
       imageFile: _capturedImage!,
-      audioFile: _recordedAudio!,
+      audioFile: _recordedAudio,
+      transcript: transcriptText.isNotEmpty ? transcriptText : null,
     );
 
     if (!mounted) return;
 
     if (provider.processingError != null) {
-      // Show error and go back to step 2
       setState(() => _step = 2);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.processingError!),
             backgroundColor: AppTheme.dangerRed,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
     } else {
-      // Navigate to review
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -187,11 +286,11 @@ class _CaptureScreenState extends State<CaptureScreen>
   String _stepTitle() {
     switch (_step) {
       case 1:
-        return 'Step 1 · Photo';
+        return 'Step 1 · Photo (तस्वीर)';
       case 2:
-        return 'Step 2 · Describe';
+        return 'Step 2 · Speak (विवरण बोलें)';
       case 3:
-        return 'Processing…';
+        return 'AI Studio Processing…';
       default:
         return 'Capture';
     }
@@ -216,7 +315,6 @@ class _CaptureScreenState extends State<CaptureScreen>
     return Column(
       key: const ValueKey('step1'),
       children: [
-        // Viewport area with bounding-box overlay
         Expanded(
           child: Container(
             margin: const EdgeInsets.all(20),
@@ -224,7 +322,7 @@ class _CaptureScreenState extends State<CaptureScreen>
               color: Colors.grey.shade200,
               borderRadius: BorderRadius.circular(AppTheme.borderRadiusLg),
               border: Border.all(
-                color: AppTheme.saffron.withOpacity(0.4),
+                color: AppTheme.saffron.withValues(alpha: 0.4),
                 width: 3,
               ),
             ),
@@ -244,7 +342,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                       Icon(
                         Icons.crop_free_rounded,
                         size: 100,
-                        color: AppTheme.saffron.withOpacity(0.3),
+                        color: AppTheme.saffron.withValues(alpha: 0.3),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -257,12 +355,10 @@ class _CaptureScreenState extends State<CaptureScreen>
                   ),
           ),
         ),
-        // Action buttons
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: Row(
             children: [
-              // Gallery picker
               Expanded(
                 child: SizedBox(
                   height: AppTheme.bigButtonHeight,
@@ -274,7 +370,6 @@ class _CaptureScreenState extends State<CaptureScreen>
                 ),
               ),
               const SizedBox(width: 14),
-              // Camera capture
               Expanded(
                 flex: 2,
                 child: SizedBox(
@@ -293,140 +388,235 @@ class _CaptureScreenState extends State<CaptureScreen>
     );
   }
 
-  // ── Step 2 widget ──────────────────────────────────────────────────
+  // ── Step 2 widget (Live Transcript in native language) ─────────────
 
   Widget _buildVoiceStep() {
-    return Column(
+    final hasContent = _liveTranscript.isNotEmpty ||
+        _transcriptController.text.isNotEmpty ||
+        _recordedAudio != null;
+
+    return SingleChildScrollView(
       key: const ValueKey('step2'),
-      children: [
-        // Preview of captured image
-        if (_capturedImage != null)
-          Container(
-            height: 200,
-            margin: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppTheme.borderRadiusMd),
-              image: DecorationImage(
-                image: FileImage(_capturedImage!),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-
-        const Spacer(),
-
-        // Push-to-talk button
-        Text(
-          _isRecording ? 'Recording… Tap to stop' : 'Hold or tap to record',
-          style: AppTheme.titleLarge,
-        ),
-        const SizedBox(height: 20),
-
-        AnimatedBuilder(
-          animation: _pulseController,
-          builder: (context, child) {
-            final scale = _isRecording
-                ? 1.0 + (_pulseController.value * 0.12)
-                : 1.0;
-            return Transform.scale(
-              scale: scale,
-              child: child,
-            );
-          },
-          child: GestureDetector(
-            onTap: _toggleRecording,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isRecording ? AppTheme.dangerRed : AppTheme.saffron,
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isRecording ? AppTheme.dangerRed : AppTheme.saffron)
-                        .withOpacity(0.4),
-                    blurRadius: 24,
-                    spreadRadius: 4,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Thumbnail of photo
+          if (_capturedImage != null)
+            Center(
+              child: Container(
+                height: 140,
+                width: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                    ),
+                  ],
+                  image: DecorationImage(
+                    image: FileImage(_capturedImage!),
+                    fit: BoxFit.cover,
                   ),
-                ],
-              ),
-              child: Icon(
-                _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-                color: Colors.white,
-                size: 56,
+                ),
               ),
             ),
+          const SizedBox(height: 16),
+
+          // ── Live Speech Transcript Box ─────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _isRecording ? const Color(0xFFFFF7ED) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _isRecording ? AppTheme.saffron : Colors.grey.shade300,
+                width: _isRecording ? 2.0 : 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _isRecording
+                      ? AppTheme.saffron.withValues(alpha: 0.15)
+                      : Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (_isRecording)
+                      Container(
+                        width: 10,
+                        height: 10,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    Text(
+                      _isRecording
+                          ? 'बोलिए, हम सुन रहे हैं (Listening…)'
+                          : 'विवरण (Live Transcript):',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: _isRecording ? Colors.red.shade700 : AppTheme.slate,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _liveTranscript.isNotEmpty
+                      ? _liveTranscript
+                      : (_transcriptController.text.isNotEmpty
+                          ? _transcriptController.text
+                          : 'माइक दबाकर उत्पाद का नाम, सामग्री और समय बताएं... (Tap mic and speak)'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    height: 1.4,
+                    fontWeight: _liveTranscript.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                    color: _liveTranscript.isNotEmpty || _transcriptController.text.isNotEmpty
+                        ? const Color(0xFF1E293B)
+                        : Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
 
-        const Spacer(),
+          const SizedBox(height: 24),
 
-        // Submit button (visible once we have audio)
-        if (_recordedAudio != null && !_isRecording)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: ElevatedButton.icon(
+          // ── Push-to-talk Mic Button ────────────────────────────────
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _isRecording ? 'रोकने के लिए दबाएं (Tap to stop)' : 'बोलने के लिए दबाएं (Tap to speak)',
+                  style: AppTheme.titleLarge.copyWith(
+                    color: _isRecording ? AppTheme.dangerRed : AppTheme.charcoal,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final scale = _isRecording
+                        ? 1.0 + (_pulseController.value * 0.14)
+                        : 1.0;
+                    return Transform.scale(
+                      scale: scale,
+                      child: child,
+                    );
+                  },
+                  child: GestureDetector(
+                    onTap: _toggleRecording,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isRecording ? AppTheme.dangerRed : AppTheme.saffron,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_isRecording ? AppTheme.dangerRed : AppTheme.saffron)
+                                .withValues(alpha: 0.4),
+                            blurRadius: 20,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                        color: Colors.white,
+                        size: 50,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Submit Button ──────────────────────────────────────────
+          if (hasContent && !_isRecording)
+            ElevatedButton.icon(
               onPressed: _submitForProcessing,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.forest,
-                minimumSize:
-                    const Size(double.infinity, AppTheme.bigButtonHeight),
+                minimumSize: const Size(double.infinity, AppTheme.bigButtonHeight),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              icon: const Icon(Icons.auto_awesome_rounded, size: 28),
-              label: const Text('Process with AI'),
+              icon: const Icon(Icons.auto_awesome_rounded, size: 28, color: Colors.white),
+              label: const Text(
+                'AI के साथ तैयार करें (Process with AI)',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
             ),
-          ),
-
-        if (_recordedAudio == null || _isRecording)
-          const SizedBox(height: AppTheme.bigButtonHeight + 24),
-      ],
-    );
-  }
-
-  // ── Step 3 widget ──────────────────────────────────────────────────
-
-  Widget _buildProcessingStep() {
-    return Center(
-      key: const ValueKey('step3'),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Animated processing indicator
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Opacity(
-                opacity: 0.5 + _pulseController.value * 0.5,
-                child: child,
-              );
-            },
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              size: 80,
-              color: AppTheme.saffron,
-            ),
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'Enhancing your product…',
-            style: AppTheme.headlineMedium,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Building catalog & pricing',
-            style: AppTheme.bodyLarge.copyWith(fontSize: 18),
-          ),
-          const SizedBox(height: 32),
-          const SizedBox(
-            width: 48,
-            height: 48,
-            child: CircularProgressIndicator(
-              strokeWidth: 4,
-              color: AppTheme.saffron,
-            ),
-          ),
         ],
       ),
     );
   }
+
+  // ── Step 3 widget (Fast Processing Screen) ─────────────────────────
+
+  Widget _buildProcessingStep() {
+    return Center(
+      key: const ValueKey('step3'),
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: 0.5 + _pulseController.value * 0.5,
+                  child: child,
+                );
+              },
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 80,
+                color: AppTheme.saffron,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Creating Studio Lighting…',
+              style: AppTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Structuring your catalog & fair pricing',
+              style: AppTheme.bodyLarge.copyWith(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            const SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                color: AppTheme.saffron,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
