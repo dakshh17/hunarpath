@@ -99,17 +99,42 @@ async def register(
             detail="Phone number already registered.",
         )
 
-    # Validate cluster exists
-    cluster = await session.get(Cluster, body.cluster_id)
-    if cluster is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cluster not found.",
+    # Resolve cluster
+    cluster = None
+    if body.cluster_id:
+        cluster = await session.get(Cluster, body.cluster_id)
+
+    if cluster is None and body.location:
+        loc = body.location.strip().lower()
+        stmt = select(Cluster).where(
+            (Cluster.name.ilike(f"%{loc}%"))
+            | (Cluster.district.ilike(f"%{loc}%"))
+            | (Cluster.state.ilike(f"%{loc}%"))
         )
+        res = await session.execute(stmt)
+        cluster = res.scalars().first()
+
+    if cluster is None:
+        res = await session.execute(select(Cluster))
+        cluster = res.scalars().first()
+
+    if cluster is None:
+        cluster = Cluster(
+            id=uuid.uuid4().hex,
+            name="General Artisan Hub",
+            state=body.location or "India",
+            district="Craft Center",
+            lat=20.5937,
+            lon=78.9629,
+            primary_craft="Handicraft & Handloom",
+            combined_monthly_capacity=1000,
+        )
+        session.add(cluster)
+        await session.flush()
 
     artisan = Artisan(
         id=uuid.uuid4().hex,
-        cluster_id=body.cluster_id,
+        cluster_id=cluster.id,
         name=body.name,
         native_dialect=body.dialect,
         phone=body.phone,

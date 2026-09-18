@@ -336,7 +336,8 @@ class RegisterRequest(BaseModel):
     name: str = Field(..., min_length=2)
     phone: str = Field(..., description="Phone number with country code")
     pin: str = Field(..., min_length=4, max_length=6)
-    cluster_id: str
+    location: Optional[str] = Field(None, description="Artisan location / city / district")
+    cluster_id: Optional[str] = None
     dialect: str = Field("hi", max_length=10)
     daily_wage: float = Field(350.0, gt=0)
 

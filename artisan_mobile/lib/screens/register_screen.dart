@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/artisan_provider.dart';
-import '../services/api_client.dart';
 import 'home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -16,49 +15,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
-  
-  String? _selectedCluster;
-  String _selectedDialect = 'hi';
+  final _locationController = TextEditingController();
+
   bool _isLoading = false;
   String? _error;
-  List<Map<String, dynamic>> _clusters = [];
 
   @override
-  void initState() {
-    super.initState();
-    _loadClusters();
-  }
-
-  Future<void> _loadClusters() async {
-    try {
-      final res = await ApiClient().fetchClustersGeoJSON();
-      final features = res['features'] as List;
-      setState(() {
-        _clusters = features.map((f) {
-          final props = f['properties'] as Map<String, dynamic>;
-          return {
-            'id': props['id']?.toString() ?? '1',
-            'name': props['name']?.toString() ?? 'Cluster',
-          };
-        }).toList();
-        if (_clusters.isNotEmpty) {
-          _selectedCluster = _clusters.first['id'] as String;
-        }
-      });
-    } catch (e) {
-      // Fallback
-      setState(() {
-        _clusters = [
-          {'id': '1', 'name': 'Varanasi Weavers'},
-          {'id': '2', 'name': 'Bastar Bell Metal'},
-        ];
-        _selectedCluster = '1';
-      });
-    }
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _pinController.dispose();
+    _confirmPinController.dispose();
+    _locationController.dispose();
+    super.dispose();
   }
 
   void _register() async {
-    if (_pinController.text != _confirmPinController.text) {
+    final name = _nameController.text.trim();
+    final phoneInput = _phoneController.text.trim();
+    final pin = _pinController.text.trim();
+    final confirmPin = _confirmPinController.text.trim();
+    final location = _locationController.text.trim();
+
+    if (name.isEmpty) {
+      setState(() => _error = 'Please enter your name');
+      return;
+    }
+    if (phoneInput.isEmpty) {
+      setState(() => _error = 'Please enter your phone number');
+      return;
+    }
+    if (pin.length < 4) {
+      setState(() => _error = 'PIN must be at least 4 digits');
+      return;
+    }
+    if (pin != confirmPin) {
       setState(() => _error = 'PINs do not match');
       return;
     }
@@ -68,17 +59,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = null;
     });
 
-    final provider = Provider.of<ArtisanProvider>(context, listen: false);
-    String phone = _phoneController.text.trim();
+    String phone = phoneInput;
     if (!phone.startsWith('+')) {
       phone = '+91$phone';
     }
+
+    final provider = Provider.of<ArtisanProvider>(context, listen: false);
     final success = await provider.register(
-      name: _nameController.text.trim(),
+      name: name,
       phone: phone,
-      pin: _pinController.text.trim(),
-      clusterId: _selectedCluster ?? '1',
-      dialect: _selectedDialect,
+      pin: pin,
+      location: location.isNotEmpty ? location : null,
+      dialect: 'hi',
     );
 
     if (!mounted) return;
@@ -92,7 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       setState(() {
         _isLoading = false;
-        _error = provider.authError ?? 'Registration failed';
+        _error = provider.authError ?? 'Registration failed. Please check your connection.';
       });
     }
   }
@@ -100,74 +92,107 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(
+        title: const Text('Register as Artisan'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Text(
+                'Create Your Artisan Account',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Start onboarding your handcrafted products with AI assistance.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 24),
               if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16.0),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: Colors.red),
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
                     textAlign: TextAlign.center,
                   ),
                 ),
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  hintText: 'e.g. Ramesh Kumar',
+                  prefixIcon: Icon(Icons.person_outline),
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone', prefixText: '+91 ', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixText: '+91 ',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _pinController,
-                decoration: const InputDecoration(labelText: '4-digit PIN', border: OutlineInputBorder()),
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 4,
+                controller: _locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location / City / District',
+                  hintText: 'e.g. Varanasi, UP',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _confirmPinController,
-                decoration: const InputDecoration(labelText: 'Confirm PIN', border: OutlineInputBorder()),
+                controller: _pinController,
+                decoration: const InputDecoration(
+                  labelText: '4-digit Security PIN',
+                  hintText: 'Choose 4 digits',
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 4,
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedCluster,
-                decoration: const InputDecoration(labelText: 'Cluster', border: OutlineInputBorder()),
-                items: _clusters.map((c) {
-                  return DropdownMenuItem<String>(
-                    value: c['id'] as String,
-                    child: Text(c['name'] as String),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() => _selectedCluster = val);
-                },
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedDialect,
-                decoration: const InputDecoration(labelText: 'Dialect', border: OutlineInputBorder()),
-                items: const [
-                  DropdownMenuItem(value: 'hi', child: Text('Hindi')),
-                  DropdownMenuItem(value: 'gu', child: Text('Gujarati')),
-                  DropdownMenuItem(value: 'bn', child: Text('Bengali')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedDialect = val);
-                },
+              const SizedBox(height: 8),
+              TextField(
+                controller: _confirmPinController,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm PIN',
+                  hintText: 'Re-enter 4 digits',
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 4,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -175,15 +200,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6B00),
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Register', style: TextStyle(fontSize: 18, color: Colors.white)),
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Register & Open App',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
               ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Already registered? Login', style: TextStyle(color: Color(0xFFFF6B00))),
+                child: const Text(
+                  'Already registered? Login here',
+                  style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),

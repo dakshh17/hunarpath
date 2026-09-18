@@ -134,7 +134,8 @@ class ArtisanProvider extends ChangeNotifier {
     required String name,
     required String phone,
     required String pin,
-    required String clusterId,
+    String? location,
+    String? clusterId,
     String dialect = 'hi',
     double dailyWage = 350.0,
   }) async {
@@ -147,6 +148,7 @@ class ArtisanProvider extends ChangeNotifier {
         name: name,
         phone: phone,
         pin: pin,
+        location: location,
         clusterId: clusterId,
         dialect: dialect,
         dailyWage: dailyWage,

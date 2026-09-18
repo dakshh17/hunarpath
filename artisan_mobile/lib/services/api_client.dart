@@ -76,22 +76,30 @@ class ApiClient {
     required String name,
     required String phone,
     required String pin,
-    required String clusterId,
+    String? location,
+    String? clusterId,
     String dialect = 'hi',
     double dailyWage = 350.0,
   }) async {
     final uri = Uri.parse('$_baseUrl/api/v1/auth/register');
+    final Map<String, dynamic> requestBody = {
+      'name': name,
+      'phone': phone,
+      'pin': pin,
+      'dialect': dialect,
+      'daily_wage': dailyWage,
+    };
+    if (location != null && location.isNotEmpty) {
+      requestBody['location'] = location;
+    }
+    if (clusterId != null && clusterId.isNotEmpty) {
+      requestBody['cluster_id'] = clusterId;
+    }
+
     final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'phone': phone,
-        'pin': pin,
-        'cluster_id': clusterId,
-        'dialect': dialect,
-        'daily_wage': dailyWage,
-      }),
+      body: jsonEncode(requestBody),
     );
 
     if (response.statusCode != 200) {
