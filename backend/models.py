@@ -1,5 +1,5 @@
 """
-ShilpSetu – SQLAlchemy ORM models.
+HunarPath – SQLAlchemy ORM models.
 
 Tables
 ------

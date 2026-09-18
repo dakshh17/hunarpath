@@ -27,7 +27,7 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2">
           <Hexagon className="h-8 w-8 text-saffron-500" strokeWidth={2.5} />
           <span className="text-xl font-bold text-gray-900">
-            Shilp<span className="text-saffron-500">Setu</span>
+            Hunar<span className="text-saffron-500">Path</span>
           </span>
         </Link>
 

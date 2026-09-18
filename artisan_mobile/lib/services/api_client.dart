@@ -6,7 +6,7 @@ import 'package:http_parser/http_parser.dart';
 
 import '../models/models.dart';
 
-/// HTTP client for the ShilpSetu AI backend.
+/// HTTP client for the HunarPath AI backend.
 ///
 /// All methods include defensive error handling and return typed models.
 class ApiClient {

@@ -42,7 +42,7 @@ export default function HomePage() {
       {/* Hero */}
       <div className="text-center">
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-          Shilp<span className="text-saffron-500">Setu</span>
+          Hunar<span className="text-saffron-500">Path</span>
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
           India&apos;s AI-powered bridge between heritage artisan clusters and

@@ -1,6 +1,6 @@
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ShilpSetu AI — Multi-Container Stack
+# HunarPath AI — Multi-Container Stack
 #
 #   db       →  PostgreSQL 16 + pgvector (port 5432)
 #   backend  →  FastAPI AI engine         (port 8000)
@@ -11,20 +11,20 @@ services:
   # ── PostgreSQL + pgvector ─────────────────────────────────────────────────
   db:
     image: pgvector/pgvector:pg16
-    container_name: shilpsetu-db
+    container_name: hunarpath-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: shilpsetu
-      POSTGRES_PASSWORD: shilpsetu_secret
-      POSTGRES_DB: shilpsetu
+      POSTGRES_USER: hunarpath
+      POSTGRES_PASSWORD: hunarpath_secret
+      POSTGRES_DB: hunarpath
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - shilpsetu-net
+      - hunarpath-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shilpsetu -d shilpsetu"]
+      test: ["CMD-SHELL", "pg_isready -U hunarpath -d hunarpath"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -35,11 +35,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: shilpsetu-backend
+    container_name: hunarpath-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://shilpsetu:shilpsetu_secret@db:5432/shilpsetu
-      DATABASE_URL_SYNC: postgresql+psycopg2://shilpsetu:shilpsetu_secret@db:5432/shilpsetu
+      DATABASE_URL: postgresql+asyncpg://hunarpath:hunarpath_secret@db:5432/hunarpath
+      DATABASE_URL_SYNC: postgresql+psycopg2://hunarpath:hunarpath_secret@db:5432/hunarpath
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       SQL_ECHO: "0"
     ports:
@@ -48,7 +48,7 @@ services:
       - ./backend:/app
       - backend-uploads:/app/uploads
     networks:
-      - shilpsetu-net
+      - hunarpath-net
     depends_on:
       db:
         condition: service_healthy
@@ -64,7 +64,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: shilpsetu-web
+    container_name: hunarpath-web
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000
@@ -72,14 +72,14 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - shilpsetu-net
+      - hunarpath-net
     depends_on:
       backend:
         condition: service_healthy
 
 # ── Shared network ──────────────────────────────────────────────────────────
 networks:
-  shilpsetu-net:
+  hunarpath-net:
     driver: bridge
 
 # ── Persistent volumes ──────────────────────────────────────────────────────

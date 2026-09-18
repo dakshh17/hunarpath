@@ -1,5 +1,5 @@
 """
-ShilpSetu – Authentication service.
+HunarPath – Authentication service.
 
 Provides JWT token creation/verification and PIN hashing utilities.
 """
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "shilpsetu-hackathon-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "hunarpath-hackathon-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 

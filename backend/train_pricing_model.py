@@ -1,5 +1,5 @@
 """
-ShilpSetu – XGBoost Fair-Trade Pricing Model Trainer.
+HunarPath – XGBoost Fair-Trade Pricing Model Trainer.
 
 Generates a synthetic dataset of 5,000 Indian handicraft pricing records
 across all 10 craft categories, trains an XGBRegressor, evaluates it,
@@ -163,7 +163,7 @@ def generate_dataset(
 def train_and_save() -> None:
     """Train the XGBRegressor and save to disk."""
     print("=" * 60)
-    print("  ShilpSetu – XGBoost Pricing Model Trainer")
+    print("  HunarPath – XGBoost Pricing Model Trainer")
     print("=" * 60)
 
     # 1. Generate data

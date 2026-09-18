@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'ShilpSetu',
+                'HunarPath',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 40,

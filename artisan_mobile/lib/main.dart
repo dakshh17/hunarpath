@@ -8,11 +8,11 @@ import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ShilpSetuApp());
+  runApp(const HunarPathApp());
 }
 
-class ShilpSetuApp extends StatelessWidget {
-  const ShilpSetuApp({super.key});
+class HunarPathApp extends StatelessWidget {
+  const HunarPathApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class ShilpSetuApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ArtisanProvider()),
       ],
       child: MaterialApp(
-        title: 'ShilpSetu',
+        title: 'HunarPath',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const AuthGate(),
@@ -47,7 +47,7 @@ class AuthGate extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'ShilpSetu',
+                    'HunarPath',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: const Color(0xFFFF6B00),

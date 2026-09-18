@@ -35,6 +35,8 @@ wheels/
 *.db
 *.sqlite3
 shilpsetu_dev.db
+hunarpath_dev.db
+test_output/
 
 # Node / Next.js
 node_modules/

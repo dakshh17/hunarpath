@@ -1,5 +1,5 @@
 """
-ShilpSetu – Structured Cataloger Service.
+HunarPath – Structured Cataloger Service.
 
 Extracts structured product metadata from an artisan's free-form
 transcript using a local Ollama LLM (qwen2.5:1.5b / llama3).  Falls
@@ -40,7 +40,7 @@ HTTP_TIMEOUT: float = 30.0
 # System prompt – strict fact-grounding
 # ---------------------------------------------------------------------------
 _SYSTEM_PROMPT = """\
-You are ShilpSetu Cataloger, a structured data extraction engine for \
+You are HunarPath Cataloger, a structured data extraction engine for \
 Indian handicraft products.
 
 RULES (absolute):

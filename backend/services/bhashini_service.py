@@ -1,5 +1,5 @@
 """
-ShilpSetu – Indic Speech Engine (Bhashini ULCA ASR).
+HunarPath – Indic Speech Engine (Bhashini ULCA ASR).
 
 Provides Indic-language speech-to-text using the government Bhashini
 ULCA pipeline.  Falls back to an offline heuristic transcript when the

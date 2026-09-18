@@ -1,5 +1,5 @@
 """
-ShilpSetu – Demand Radar Service.
+HunarPath – Demand Radar Service.
 
 Aggregates search-trend data from the ``search_trends`` table and
 synthesises plain-language demand notifications in the artisan's

@@ -1,5 +1,5 @@
 """
-ShilpSetu – Mock / seed data generator.
+HunarPath – Mock / seed data generator.
 
 Creates:
   • 3 geographic clusters (Kachchh, Varanasi, Bastar)

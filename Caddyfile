@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# ShilpSetu — Production Caddy Reverse Proxy Configuration
+# HunarPath — Production Caddy Reverse Proxy Configuration
 # Automatic Let's Encrypt HTTPS certificates for custom domain or subdomain
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -9,7 +9,7 @@
     admin off
 }
 
-# ── API Gateway (e.g. api.shilpsetu.in or localhost / IP) ─────────────────────
+# ── API Gateway (e.g. api.hunarpath.in or localhost / IP) ─────────────────────
 {$API_DOMAIN::8000} {
     encode gzip zstd
 
@@ -30,7 +30,7 @@
     }
 }
 
-# ── Web Buyer Marketplace (e.g. shilpsetu.in or :80) ──────────────────────────
+# ── Web Buyer Marketplace (e.g. hunarpath.in or :80) ──────────────────────────
 {$WEB_DOMAIN::80} {
     encode gzip zstd
 

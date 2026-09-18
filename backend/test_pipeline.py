@@ -1,5 +1,5 @@
 """
-ShilpSetu — End-to-End Integration Test Pipeline.
+HunarPath — End-to-End Integration Test Pipeline.
 
 Exercises every backend API endpoint programmatically with synthetic
 payloads.  Designed to run either inside the Docker stack or against a
@@ -357,7 +357,7 @@ def test_demand_radar(client: httpx.Client):
 
 def main():
     print(f"\n{'═' * 64}")
-    print(f"  ShilpSetu Integration Test Suite")
+    print(f"  HunarPath Integration Test Suite")
     print(f"  Target: {BASE_URL}")
     print(f"{'═' * 64}\n")
 

@@ -1,5 +1,5 @@
 """
-ShilpSetu AI – Primary FastAPI Application Gateway.
+HunarPath AI – Primary FastAPI Application Gateway.
 
 Connects Flutter mobile / Next.js web clients to the AI service layer:
   • Catalog ingest  (vision + ASR + cataloger + pricing – concurrent)
@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("Shutting down ShilpSetu AI backend …")
+    logger.info("Shutting down HunarPath AI backend …")
     await dispose_engine()
 
 
@@ -94,9 +94,9 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="ShilpSetu AI Backend Engine",
+    title="HunarPath AI Backend Engine",
     description=(
-        "API gateway for the ShilpSetu artisan empowerment platform.  "
+        "API gateway for the HunarPath artisan empowerment platform.  "
         "Provides AI-powered catalog ingestion, fair pricing, GeoJSON "
         "cluster maps, RFQ aggregation, and demand-radar alerts."
     ),
@@ -492,7 +492,7 @@ async def demand_radar(
 @app.get("/", tags=["Ops"], summary="Root endpoint")
 async def root():
     return {
-        "service": "ShilpSetu AI Platform Gateway",
+        "service": "HunarPath AI Platform Gateway",
         "status": "online",
         "docs": "/docs",
         "health": "/healthz",
@@ -501,4 +501,4 @@ async def root():
 
 @app.get("/healthz", tags=["Ops"], summary="Liveness probe")
 async def healthz():
-    return {"status": "ok", "service": "shilpsetu-ai-backend"}
+    return {"status": "ok", "service": "hunarpath-ai-backend"}

@@ -1,4 +1,4 @@
-# ShilpSetu AI — SIH 26090
+# HunarPath AI — SIH 26090
 
 > AI-powered bridge connecting India's heritage artisan clusters with global
 > buyers. Fair pricing, studio-quality cataloging, and transparent supply
@@ -49,7 +49,7 @@
 ### 1 — Clone & Launch
 
 ```bash
-git clone <repo-url> && cd shilpsetu
+git clone <repo-url> && cd hunarpath
 
 # Build and start all three containers
 docker compose up --build
@@ -71,7 +71,7 @@ docker compose logs backend | grep -i "seed"
 Or query directly:
 
 ```bash
-docker compose exec db psql -U shilpsetu -c "SELECT name, district FROM clusters;"
+docker compose exec db psql -U hunarpath -c "SELECT name, district FROM clusters;"
 ```
 
 Expected output:
@@ -109,7 +109,7 @@ Expected output:
 
 ```
 ═══════════════════════════════════════════════════════════════
-  ShilpSetu Integration Test Suite
+  HunarPath Integration Test Suite
   Target: http://localhost:8000
 ═══════════════════════════════════════════════════════════════
 
@@ -210,7 +210,7 @@ flutter run                  # launch on connected device / emulator
 ## Project Structure
 
 ```
-shilpsetu/
+hunarpath/
 ├── docker-compose.yml              ← orchestrates db + backend + web
 ├── README.md
 │

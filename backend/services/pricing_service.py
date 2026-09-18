@@ -1,5 +1,5 @@
 """
-ShilpSetu – Dynamic Pricing Assistant.
+HunarPath – Dynamic Pricing Assistant.
 
 Computes a fair recommended retail price for handcrafted products using
 a cost-plus methodology augmented by:

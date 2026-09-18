@@ -1,5 +1,5 @@
 """
-ShilpSetu – Authentication router.
+HunarPath – Authentication router.
 
 Endpoints for artisan login and registration using phone + PIN.
 """

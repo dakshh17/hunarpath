@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('ShilpSetu'),
+            title: const Text('HunarPath'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.assignment, size: AppTheme.iconSizeLarge),

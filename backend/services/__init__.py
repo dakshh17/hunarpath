@@ -1,5 +1,5 @@
 """
-ShilpSetu AI service layer.
+HunarPath AI service layer.
 
 Modules
 -------

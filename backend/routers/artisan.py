@@ -1,5 +1,5 @@
 """
-ShilpSetu – Artisan profile, dashboard, and orders router.
+HunarPath – Artisan profile, dashboard, and orders router.
 
 All endpoints require JWT authentication.
 """

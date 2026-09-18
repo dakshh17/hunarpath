@@ -1,5 +1,5 @@
 """
-ShilpSetu – Vision Studio Pipeline.
+HunarPath – Vision Studio Pipeline.
 
 Transforms raw workshop photographs into professional e-commerce-ready
 product images using background removal (U²-Net via rembg), adaptive

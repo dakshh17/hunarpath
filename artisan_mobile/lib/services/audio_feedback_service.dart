@@ -47,9 +47,9 @@ class AudioFeedbackService {
 
   Future<void> welcomeGreeting(String name) async {
     await speak(_getLocalized(
-      hi: 'नमस्ते $name जी, शिल्पसेतु में आपका स्वागत है',
-      en: 'Welcome $name, to ShilpSetu',
-      gu: 'નમસ્તે $name, શિલ્પસેતુમાં આપનું સ્વાગત છે',
+      hi: 'नमस्ते $name जी, हुनरपथ में आपका स्वागत है',
+      en: 'Welcome $name, to HunarPath',
+      gu: 'નમસ્તે $name, હુનરપથમાં આપનું સ્વાગત છે',
     ));
   }
 

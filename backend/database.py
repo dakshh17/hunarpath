@@ -1,5 +1,5 @@
 """
-ShilpSetu – Database engine & session configuration.
+HunarPath – Database engine & session configuration.
 
 Supports two modes:
   1. PostgreSQL + pgvector (production) – when DATABASE_URL env var is set.
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
-    "sqlite+aiosqlite:///./shilpsetu_dev.db",
+    "sqlite+aiosqlite:///./hunarpath_dev.db",
 )
 
 # Quick sanity: if someone passes the psycopg2 sync URL by mistake, swap driver

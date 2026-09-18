@@ -1,5 +1,5 @@
 """
-ShilpSetu – Public catalog router.
+HunarPath – Public catalog router.
 
 Provides product listing and search for the web dashboard.
 No authentication required (buyer-facing, public).
