@@ -30,20 +30,33 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "hunarpath-hackathon-secret-key-change-
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-# ---------------------------------------------------------------------------
-# Password / PIN hashing
-# ---------------------------------------------------------------------------
+import hashlib
+import hmac
+
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_pin(pin: str) -> str:
-    """Hash a PIN string using bcrypt."""
-    return _pwd_context.hash(pin)
+    """Hash a PIN string using PBKDF2-HMAC-SHA256 with salt (cross-platform, zero dependencies)."""
+    salt = os.urandom(16).hex()
+    key = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt.encode(), 100000).hex()
+    return f"pbkdf2_sha256${salt}${key}"
 
 
 def verify_pin(plain_pin: str, hashed_pin: str) -> bool:
-    """Verify a plain PIN against its bcrypt hash."""
-    return _pwd_context.verify(plain_pin, hashed_pin)
+    """Verify a plain PIN against its PBKDF2 or bcrypt hash."""
+    if not hashed_pin:
+        return False
+    if hashed_pin.startswith("pbkdf2_sha256$"):
+        parts = hashed_pin.split("$")
+        if len(parts) == 3:
+            salt, expected_key = parts[1], parts[2]
+            key = hashlib.pbkdf2_hmac("sha256", plain_pin.encode(), salt.encode(), 100000).hex()
+            return hmac.compare_digest(key, expected_key)
+    try:
+        return _pwd_context.verify(plain_pin, hashed_pin)
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
