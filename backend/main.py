@@ -1,8 +1,8 @@
 """
-HunarPath AI – Primary FastAPI Application Gateway.
+HunarPath AI - Primary FastAPI Application Gateway.
 
 Connects Flutter mobile / Next.js web clients to the AI service layer:
-  • Catalog ingest  (vision + ASR + cataloger + pricing – concurrent)
+  • Catalog ingest  (vision + ASR + cataloger + pricing - concurrent)
   • Catalog publish  (persist product + vector embedding)
   • Clusters map     (GeoJSON for map widgets)
   • RFQ aggregation  (proportional artisan allocation)
@@ -77,15 +77,26 @@ async def lifespan(app: FastAPI):
         try:
             from mock_data import seed as seed_database
             await seed_database()
-            logger.info("Mock data seed completed.")
+            logger.info("Base cluster & artisan seeding completed.")
+
+            # Purge legacy mock products without studio images
+            # so the marketplace strictly contains genuine artisan-published products
+            from database import async_session_factory
+            from sqlalchemy import delete
+            async with async_session_factory() as session:
+                del_stmt = delete(Product).where(Product.studio_image_path.is_(None))
+                result = await session.execute(del_stmt)
+                await session.commit()
+                if result.rowcount > 0:
+                    logger.info("Purged %d legacy mock products without studio images.", result.rowcount)
         except Exception:
-            logger.exception("Mock data seeding failed – continuing without seed data.")
+            logger.exception("Startup data setup encountered an issue - continuing.")
     else:
         logger.error("Could not connect to external DB during startup. Backend will continue booting.")
 
     yield
 
-    logger.info("Shutting down HunarPath AI backend …")
+    logger.info("Shutting down HunarPath AI backend ...")
     await dispose_engine()
 
 

@@ -84,7 +84,7 @@ export default function ClusterMapPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-saffron-500" />
-        <span className="ml-3 text-lg text-gray-600">Loading cluster map…</span>
+        <span className="ml-3 text-lg text-gray-600">Loading cluster map...</span>
       </div>
     );
   }
@@ -113,7 +113,7 @@ export default function ClusterMapPage() {
         <h1 className="text-3xl font-extrabold text-gray-900">
           Craft Cluster Map
         </h1>
-        <p className="mt-1 text-gray-500">
+        <p className="mt-1 text-gray-500 text-justify">
           {features.length} verified artisan clusters across India
         </p>
       </div>

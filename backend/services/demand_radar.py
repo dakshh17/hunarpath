@@ -1,5 +1,5 @@
 """
-HunarPath – Demand Radar Service.
+HunarPath - Demand Radar Service.
 
 Aggregates search-trend data from the ``search_trends`` table and
 synthesises plain-language demand notifications in the artisan's
@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Dialect notification templates
 # ---------------------------------------------------------------------------
-# {craft} – craft category, {pct} – percentage change, {region} – region,
-# {price} – target price
+# {craft} - craft category, {pct} - percentage change, {region} - region,
+# {price} - target price
 
 _NOTIFICATION_TEMPLATES: dict[str, str] = {
     "en": (
@@ -69,7 +69,7 @@ _BASELINE_SEARCH_COUNTS: dict[str, int] = {
     "Terracotta": 2000,
 }
 
-# Approximate market price signals per craft (₹) – used for notification text
+# Approximate market price signals per craft (₹) - used for notification text
 _TARGET_PRICE_HINTS: dict[str, int] = {
     "Zari & Brocade": 2200,
     "Bell Metal Craft": 1800,

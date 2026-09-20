@@ -1,8 +1,8 @@
-# HunarPath AI — SIH 26090
+# HunarPath AI - SIH 26090
 
 > AI-powered bridge connecting India's heritage artisan clusters with global
 > buyers. Fair pricing, studio-quality cataloging, and transparent supply
-> chains — all from a single voice note.
+> chains - all from a single voice note.
 
 ---
 
@@ -32,7 +32,7 @@
 | **db**           | PostgreSQL 16 + pgvector                           | `5432` |
 | **backend**      | Python 3.11 · FastAPI · SQLAlchemy 2 · rembg · XGBoost | `8000` |
 | **web**          | Next.js 14 (App Router) · Tailwind CSS · Leaflet   | `3000` |
-| **artisan_mobile** | Flutter · Provider · flutter_tts · record        | —      |
+| **artisan_mobile** | Flutter · Provider · flutter_tts · record        | -      |
 
 ---
 
@@ -46,7 +46,7 @@
 | Docker Compose | v2.20+    |
 | Git      | 2.x             |
 
-### 1 — Clone & Launch
+### 1 - Clone & Launch
 
 ```bash
 git clone <repo-url> && cd hunarpath
@@ -55,10 +55,10 @@ git clone <repo-url> && cd hunarpath
 docker compose up --build
 ```
 
-> **First run** takes 3–5 minutes (Python deps, Next.js build, pgvector
+> **First run** takes 3-5 minutes (Python deps, Next.js build, pgvector
 > extension install).  Subsequent starts are near-instant.
 
-### 2 — Verify Database Seed
+### 2 - Verify Database Seed
 
 The backend auto-seeds mock data on startup (3 clusters, 10 artisans,
 15 products, 5 search trends).  Confirm in logs:
@@ -82,7 +82,7 @@ Expected output:
 | Varanasi Zari Cluster       | Varanasi  |
 | Bastar Bell Metal Cluster   | Bastar    |
 
-### 3 — Verify Endpoints
+### 3 - Verify Endpoints
 
 ```bash
 # Health check
@@ -95,7 +95,7 @@ curl http://localhost:8000/api/v1/clusters/map | python -m json.tool
 curl "http://localhost:8000/api/v1/demand-radar?dialect=en&limit=3"
 ```
 
-### 4 — Run Integration Tests
+### 4 - Run Integration Tests
 
 ```bash
 # Inside the backend container
@@ -114,44 +114,44 @@ Expected output:
 ═══════════════════════════════════════════════════════════════
 
 ─── T0: Healthcheck ───────────────────────────────────────
-  ✅  Healthcheck /healthz
+    Healthcheck /healthz
 
 ─── T1: Clusters Map ──────────────────────────────────────
-  ✅  Clusters map – HTTP 200
-  ✅  Clusters map – ≥ 3 features
-  ✅  Clusters map – valid GeoJSON type
-  ✅  Clusters map – feature schema valid
+    Clusters map - HTTP 200
+    Clusters map - ≥ 3 features
+    Clusters map - valid GeoJSON type
+    Clusters map - feature schema valid
 
 ─── T2: Catalog Ingest Pipeline ───────────────────────────
-  ✅  Catalog ingest – HTTP 200
-  ✅  Catalog ingest – has studio_image_base64
-  ✅  Catalog ingest – has raw_transcript
-  ✅  Catalog ingest – has catalog_metadata
-  ✅  Catalog ingest – has price_recommendation
-  ✅  Catalog ingest – studio image white background
-  ✅  Catalog ingest – price > cost floor
-  ✅  Catalog ingest – corridor min < recommended < max
+    Catalog ingest - HTTP 200
+    Catalog ingest - has studio_image_base64
+    Catalog ingest - has raw_transcript
+    Catalog ingest - has catalog_metadata
+    Catalog ingest - has price_recommendation
+    Catalog ingest - studio image white background
+    Catalog ingest - price > cost floor
+    Catalog ingest - corridor min < recommended < max
 
 ─── T3: Catalog Publish ───────────────────────────────────
-  ✅  Catalog publish – HTTP 200
-  ✅  Catalog publish – product_id returned
-  ✅  Catalog publish – embedding stored
-  ✅  Catalog publish – success message
+    Catalog publish - HTTP 200
+    Catalog publish - product_id returned
+    Catalog publish - embedding stored
+    Catalog publish - success message
 
 ─── T4: RFQ Aggregate ────────────────────────────────────
-  ✅  RFQ aggregate – HTTP 200
-  ✅  RFQ aggregate – has rfq_id
-  ✅  RFQ aggregate – status is ALLOCATED
-  ✅  RFQ aggregate – multiple artisan allocations
-  ✅  RFQ aggregate – allocated units sum = target
-  ✅  RFQ aggregate – every artisan gets > 0 units
-  ✅  RFQ aggregate – total_value = units × price
+    RFQ aggregate - HTTP 200
+    RFQ aggregate - has rfq_id
+    RFQ aggregate - status is ALLOCATED
+    RFQ aggregate - multiple artisan allocations
+    RFQ aggregate - allocated units sum = target
+    RFQ aggregate - every artisan gets > 0 units
+    RFQ aggregate - total_value = units × price
 
 ─── T5: Demand Radar ─────────────────────────────────────
-  ✅  Demand radar – HTTP 200
-  ✅  Demand radar – has alerts
-  ✅  Demand radar – alert schema valid
-  ✅  Demand radar – notification is non-empty
+    Demand radar - HTTP 200
+    Demand radar - has alerts
+    Demand radar - alert schema valid
+    Demand radar - notification is non-empty
 
 ═══════════════════════════════════════════════════════════════
   Results:  25/25 passed
@@ -252,6 +252,6 @@ hunarpath/
 
 ## Team
 
-**Smart India Hackathon 2024 — Problem Statement SIH26090**
+**Smart India Hackathon 2024 - Problem Statement SIH26090**
 
-Built with ❤️ for India's 7 million+ artisans.
+Built with ️ for India's 7 million+ artisans.

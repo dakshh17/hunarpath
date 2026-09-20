@@ -153,7 +153,7 @@ class _OrderCardState extends State<_OrderCard> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          _accepted ? '✓ Accepted' : order.status,
+                          _accepted ? 'Accepted' : order.status,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -233,7 +233,7 @@ class _OrderCardState extends State<_OrderCard> {
                     color: AppTheme.successGreen,
                   ),
                   label: const Text(
-                    'Order Accepted ✓',
+                    'Order Accepted',
                     style: TextStyle(
                       fontSize: 20,
                       color: AppTheme.successGreen,

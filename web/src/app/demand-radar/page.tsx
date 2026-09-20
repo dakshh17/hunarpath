@@ -57,7 +57,7 @@ export default function DemandRadarPage() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-saffron-500" />
         <span className="ml-3 text-lg text-gray-600">
-          Loading demand radar…
+          Loading demand radar...
         </span>
       </div>
     );
@@ -85,7 +85,7 @@ export default function DemandRadarPage() {
         <h1 className="text-3xl font-extrabold text-gray-900">
           Demand Radar
         </h1>
-        <p className="mt-1 text-gray-500">
+        <p className="mt-1 text-gray-500 text-justify">
           Real-time buyer search trends and regional demand signals
         </p>
       </div>
@@ -187,7 +187,7 @@ export default function DemandRadarPage() {
                     <p className="text-xs text-gray-400">growth</p>
                   </div>
                 </div>
-                <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 leading-relaxed">
+                <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 leading-relaxed text-justify">
                   {alert.notification}
                 </div>
               </div>

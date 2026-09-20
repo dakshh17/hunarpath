@@ -1,5 +1,5 @@
 """
-HunarPath – Mock / seed data generator.
+HunarPath - Mock / seed data generator.
 
 Creates:
   • 3 geographic clusters (Kachchh, Varanasi, Bastar)
@@ -29,7 +29,7 @@ from models import Artisan, Cluster, Product, RFQ, SearchTrend
 
 logger = logging.getLogger(__name__)
 
-# Default demo PIN hash for '1234' – pre-computed to avoid bcrypt overhead during seeding
+# Default demo PIN hash for '1234' - pre-computed to avoid bcrypt overhead during seeding
 _DEFAULT_PIN_HASH: str | None = None
 
 def _get_default_pin_hash() -> str:
@@ -374,7 +374,7 @@ async def seed() -> None:
     """
     Populate the database with mock data.
 
-    Safe to call multiple times – skips seeding if clusters already exist.
+    Safe to call multiple times - skips seeding if clusters already exist.
     """
     await init_db()
 
@@ -382,7 +382,7 @@ async def seed() -> None:
         # Guard: skip if data already present
         result = await session.execute(select(Cluster).limit(1))
         if result.scalars().first() is not None:
-            logger.info("Database already seeded – skipping.")
+            logger.info("Database already seeded - skipping.")
             return
 
         # ── Clusters ──────────────────────────────────────────────────
@@ -411,24 +411,8 @@ async def seed() -> None:
         await session.flush()
 
         # ── Products ─────────────────────────────────────────────────
-        for p in PRODUCTS_DATA:
-            artisan_idx = p.pop("artisan_idx")
-            embedding = _synthetic_embedding()
-
-            # For SQLite fallback, store embedding as JSON string
-            if not IS_POSTGRES:
-                embedding = json.dumps(embedding)
-
-            product = Product(
-                id=_uid(),
-                artisan_id=artisan_objs[artisan_idx].id,
-                raw_image_path=None,
-                studio_image_path=None,
-                embedding=embedding,
-                is_active=True,
-                **p,
-            )
-            session.add(product)
+        # Note: No hardcoded mock products seeded. Only products published
+        # by artisans through the HunarPath mobile app will appear.
 
         # ── Search Trends ────────────────────────────────────────────
         for st in SEARCH_TRENDS_DATA:
@@ -437,10 +421,9 @@ async def seed() -> None:
 
         await session.commit()
         logger.info(
-            "Seeded %d clusters, %d artisans, %d products, %d search trends.",
-            len(CLUSTERS_DATA),
-            len(ARTISANS_DATA),
-            len(PRODUCTS_DATA),
+            "Seeded %d clusters, %d artisans, 0 mock products, %d search trends.",
+            len(cluster_objs),
+            len(artisan_objs),
             len(SEARCH_TRENDS_DATA),
         )
 
@@ -452,4 +435,4 @@ async def seed() -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
     asyncio.run(seed())
-    print("✅  Mock data seeded successfully.")
+    print("Database seeded successfully.")

@@ -1,5 +1,5 @@
 """
-HunarPath – Vision Studio Pipeline.
+HunarPath - Vision Studio Pipeline.
 
 Transforms raw workshop photographs into professional e-commerce-ready
 product images using background removal (U²-Net via rembg), adaptive
@@ -54,7 +54,7 @@ def _remove_background(image_bytes: bytes) -> np.ndarray:
         return np.array(pil_img)
     except Exception as exc:
         logger.warning(
-            "Background removal failed or rembg unavailable (%s) – using enhanced fallback.",
+            "Background removal failed or rembg unavailable (%s) - using enhanced fallback.",
             exc,
         )
         arr = np.frombuffer(image_bytes, dtype=np.uint8)
@@ -228,18 +228,18 @@ def process_studio_image(
     bytes
         Processed studio-quality image.
     """
-    logger.info("Vision pipeline: starting background removal …")
+    logger.info("Vision pipeline: starting background removal ...")
     rgba = _remove_background(image_bytes)
 
-    logger.info("Vision pipeline: applying CLAHE …")
+    logger.info("Vision pipeline: applying CLAHE ...")
     rgba = _apply_clahe(rgba)
 
     pil_subject = Image.fromarray(rgba, "RGBA")
 
-    logger.info("Vision pipeline: generating drop-shadow …")
+    logger.info("Vision pipeline: generating drop-shadow ...")
     pil_subject = _add_drop_shadow(pil_subject)
 
-    logger.info("Vision pipeline: center-padding onto %dx%d canvas …", CANVAS_SIZE, CANVAS_SIZE)
+    logger.info("Vision pipeline: center-padding onto %dx%d canvas ...", CANVAS_SIZE, CANVAS_SIZE)
     final = _center_pad_on_canvas(pil_subject)
 
     # Encode output
@@ -253,7 +253,7 @@ def process_studio_image(
     buf.seek(0)
     result = buf.read()
     logger.info(
-        "Vision pipeline: done – output %s, %d bytes.",
+        "Vision pipeline: done - output %s, %d bytes.",
         output_format.upper(),
         len(result),
     )

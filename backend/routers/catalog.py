@@ -1,5 +1,5 @@
 """
-HunarPath – Public catalog router.
+HunarPath - Public catalog router.
 
 Provides product listing and search for the web dashboard.
 No authentication required (buyer-facing, public).
@@ -58,7 +58,7 @@ async def list_products(
         .options(
             selectinload(Product.artisan).selectinload(Artisan.cluster)
         )
-        .order_by(Product.recommended_price.desc())
+        .order_by(Product.id.desc())
     )
     result = await session.execute(stmt)
     products = list(result.scalars().all())
@@ -90,7 +90,7 @@ async def search_products(
         .options(
             selectinload(Product.artisan).selectinload(Artisan.cluster)
         )
-        .order_by(Product.recommended_price.desc())
+        .order_by(Product.id.desc())
     )
     result = await session.execute(stmt)
     products = list(result.scalars().all())

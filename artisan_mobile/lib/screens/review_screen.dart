@@ -61,7 +61,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     } else {
       scaffoldMessenger.showSnackBar(
         const SnackBar(
-          content: Text('Publishing failed – please try again'),
+          content: Text('Publishing failed - please try again'),
           backgroundColor: AppTheme.dangerRed,
         ),
       );
@@ -178,7 +178,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               )
                             : const Icon(Icons.storefront_rounded, size: 32),
                         label: Text(
-                          _isPublishing ? 'Publishing…' : 'Publish to Marketplace',
+                          _isPublishing ? 'Publishing...' : 'Publish to Marketplace',
                           style: const TextStyle(fontSize: 22),
                         ),
                       ),
@@ -318,7 +318,7 @@ class _ImageComparisonSlider extends StatelessWidget {
                       top: 12,
                       left: 12,
                       child: _ImageLabel(
-                        label: '✨ Studio (AI)',
+                        label: 'Studio (AI)',
                         active: sliderValue > 0.3,
                       ),
                     ),
@@ -326,7 +326,7 @@ class _ImageComparisonSlider extends StatelessWidget {
                       top: 12,
                       right: 12,
                       child: _ImageLabel(
-                        label: '📸 Raw (Workshop)',
+                        label: 'Raw (Workshop)',
                         active: sliderValue < 0.7,
                       ),
                     ),
@@ -352,7 +352,7 @@ class _ImageComparisonSlider extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text('Studio ✨', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.saffron)),
+              const Text('Studio', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.saffron)),
             ],
           ),
         ),
@@ -450,7 +450,7 @@ class _ProductDetailsCard extends StatelessWidget {
               value: '${laborDays.toStringAsFixed(1)} days',
             ),
             const Divider(height: 24),
-            Text('Transcript', style: AppTheme.labelLarge),
+            const Text('Transcript', style: AppTheme.labelLarge),
             const SizedBox(height: 6),
             Text(
               transcript,
@@ -563,7 +563,7 @@ class _PriceAdjuster extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        priceInRange ? '✓ Fair Price Range' : '⚠ Outside Range',
+                        priceInRange ? 'Fair Price Range' : 'Outside Range',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

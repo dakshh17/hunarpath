@@ -1,5 +1,5 @@
 """
-HunarPath – SQLAlchemy ORM models.
+HunarPath - SQLAlchemy ORM models.
 
 Tables
 ------
@@ -96,7 +96,7 @@ class Artisan(Base):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     native_dialect: Mapped[str] = mapped_column(
-        String(10), nullable=False, doc="ISO 639-1 language code (gu, hi, bn …)"
+        String(10), nullable=False, doc="ISO 639-1 language code (gu, hi, bn ...)"
     )
     phone: Mapped[str] = mapped_column(String(15), nullable=False)
     rating: Mapped[float] = mapped_column(Float, default=4.8)
@@ -137,10 +137,10 @@ class Product(Base):
     min_market_corridor: Mapped[float] = mapped_column(Float, nullable=False)
     max_market_corridor: Mapped[float] = mapped_column(Float, nullable=False)
     raw_image_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True
+        Text, nullable=True
     )
     studio_image_path: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True
+        Text, nullable=True
     )
     embedding = Column("embedding", _VECTOR_TYPE, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

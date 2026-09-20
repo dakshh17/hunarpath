@@ -1,5 +1,5 @@
 """
-HunarPath – XGBoost Fair-Trade Pricing Model Trainer.
+HunarPath - XGBoost Fair-Trade Pricing Model Trainer.
 
 Generates a synthetic dataset of 5,000 Indian handicraft pricing records
 across all 10 craft categories, trains an XGBRegressor, evaluates it,
@@ -163,14 +163,14 @@ def generate_dataset(
 def train_and_save() -> None:
     """Train the XGBRegressor and save to disk."""
     print("=" * 60)
-    print("  HunarPath – XGBoost Pricing Model Trainer")
+    print("  HunarPath - XGBoost Pricing Model Trainer")
     print("=" * 60)
 
     # 1. Generate data
     print("\n[1/4] Generating 5,000 synthetic handicraft records ...")
     X, y = generate_dataset()
     print(f"      Dataset shape: X={X.shape}, y={y.shape}")
-    print(f"      Price range : ₹{y.min():.0f} – ₹{y.max():.0f}")
+    print(f"      Price range : ₹{y.min():.0f} - ₹{y.max():.0f}")
     print(f"      Mean price  : ₹{y.mean():.0f}")
 
     # 2. Train/test split
@@ -207,10 +207,10 @@ def train_and_save() -> None:
     print(f"      MAE      : ₹{mae:.2f}")
 
     if r2 < 0.96:
-        print(f"\n⚠️  WARNING: R² = {r2:.4f} is below the target of 0.96.")
+        print(f"\n️  WARNING: R² = {r2:.4f} is below the target of 0.96.")
         print("    The model will still be saved, but consider tuning hyperparams.")
     else:
-        print(f"\n✅  R² = {r2:.4f} meets the target (> 0.96). Model is production-ready.")
+        print(f"\n  R² = {r2:.4f} meets the target (> 0.96). Model is production-ready.")
 
     # Feature importance
     importance = model.feature_importances_
@@ -225,7 +225,7 @@ def train_and_save() -> None:
     with open(MODEL_PATH, "wb") as fh:
         pickle.dump(model, fh)
     size_kb = MODEL_PATH.stat().st_size / 1024
-    print(f"\n💾  Model saved to: {MODEL_PATH}  ({size_kb:.1f} KB)")
+    print(f"\n  Model saved to: {MODEL_PATH}  ({size_kb:.1f} KB)")
 
     # 6. Quick sanity check
     print("\n--- Sanity Check ---")

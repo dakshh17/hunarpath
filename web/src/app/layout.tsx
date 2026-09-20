@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HunarPath — Artisan Marketplace",
+  title: "HunarPath - Artisan Marketplace",
   description:
     "Enterprise & retail buyer marketplace connecting businesses with verified Indian artisan clusters for bulk craft sourcing.",
 };

@@ -1,5 +1,5 @@
 """
-HunarPath – Structured Cataloger Service.
+HunarPath - Structured Cataloger Service.
 
 Extracts structured product metadata from an artisan's free-form
 transcript using a local Ollama LLM (qwen2.5:1.5b / llama3).  Falls
@@ -37,7 +37,7 @@ OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
 HTTP_TIMEOUT: float = 30.0
 
 # ---------------------------------------------------------------------------
-# System prompt – strict fact-grounding
+# System prompt - strict fact-grounding
 # ---------------------------------------------------------------------------
 _SYSTEM_PROMPT = """\
 You are HunarPath Cataloger, a structured data extraction engine for \
@@ -48,7 +48,7 @@ RULES (absolute):
    certifications (GI tag, ISO, etc.), awards, or marketing superlatives \
    that are not mentioned.
 2. If a field is not mentioned, set it to null.
-3. Output MUST be a single valid JSON object – no markdown fences, no \
+3. Output MUST be a single valid JSON object - no markdown fences, no \
    commentary.
 4. Generate professional yet truthful `title_en`, `title_hi`, \
    `description_en`, and `description_hi` based strictly on extracted facts.
@@ -157,11 +157,11 @@ def _regex_extract(transcript: str) -> dict[str, Any]:
             primary_color = c.capitalize()
             break
 
-    # Labor days – patterns like "5 days", "3 din", "in 7 days"
+    # Labor days - patterns like "5 days", "3 din", "in 7 days"
     labor_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:days?|din|dino)", text)
     labor_days: Optional[float] = float(labor_match.group(1)) if labor_match else None
 
-    # Raw cost – patterns like "1200 rupees", "cost 800", "₹1500"
+    # Raw cost - patterns like "1200 rupees", "cost 800", "₹1500"
     cost_match = re.search(
         r"(?:cost|kharcha|lagat|₹|rs\.?|rupees?)\s*(?:of\s*)?(\d+(?:,\d+)*)",
         text,
@@ -322,7 +322,7 @@ async def _call_ollama(transcript: str) -> Optional[dict[str, Any]]:
             "Ollama HTTP %s: %s", exc.response.status_code, exc.response.text[:200]
         )
     except json.JSONDecodeError:
-        logger.warning("Ollama response was not valid JSON – falling back to regex.")
+        logger.warning("Ollama response was not valid JSON - falling back to regex.")
     except Exception:
         logger.exception("Unexpected error calling Ollama.")
 
@@ -355,7 +355,7 @@ async def extract_and_translate_catalog(transcript: str) -> dict[str, Any]:
         ``description_en``, ``description_hi``.
     """
     if not transcript or not transcript.strip():
-        logger.warning("Empty transcript supplied – returning empty catalog.")
+        logger.warning("Empty transcript supplied - returning empty catalog.")
         return {
             "craft_type": None,
             "material": None,

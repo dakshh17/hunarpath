@@ -1,5 +1,5 @@
 """
-HunarPath — End-to-End Integration Test Pipeline.
+HunarPath - End-to-End Integration Test Pipeline.
 
 Exercises every backend API endpoint programmatically with synthetic
 payloads.  Designed to run either inside the Docker stack or against a
@@ -30,8 +30,8 @@ import numpy as np
 
 BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000"
 TIMEOUT = 120.0  # generous for first-run rembg model download
-PASS = "✅"
-FAIL = "❌"
+PASS = ""
+FAIL = ""
 results: list[tuple[str, bool, str]] = []
 
 
@@ -89,19 +89,19 @@ def test_clusters_map(client: httpx.Client) -> list[dict]:
     """T1: GET /api/v1/clusters/map returns valid GeoJSON."""
     r = client.get("/api/v1/clusters/map", timeout=TIMEOUT)
     ok = r.status_code == 200
-    record("Clusters map – HTTP 200", ok, f"status={r.status_code}")
+    record("Clusters map - HTTP 200", ok, f"status={r.status_code}")
     if not ok:
         return []
 
     body = r.json()
     features = body.get("features", [])
     record(
-        "Clusters map – ≥ 3 features",
+        "Clusters map - ≥ 3 features",
         len(features) >= 3,
         f"count={len(features)}",
     )
     record(
-        "Clusters map – valid GeoJSON type",
+        "Clusters map - valid GeoJSON type",
         body.get("type") == "FeatureCollection",
     )
 
@@ -111,7 +111,7 @@ def test_clusters_map(client: httpx.Client) -> list[dict]:
         required_keys = {"id", "name", "state", "district", "primary_craft",
                          "combined_monthly_capacity", "active_artisan_count"}
         has_all = required_keys.issubset(props.keys())
-        record("Clusters map – feature schema valid", has_all,
+        record("Clusters map - feature schema valid", has_all,
                f"keys={list(props.keys())[:6]}")
 
     return features
@@ -132,7 +132,7 @@ def test_catalog_ingest(client: httpx.Client, artisan_id: str = "demo_artisan_00
 
     r = client.post("/api/v1/catalog/ingest", files=files, data=data, timeout=None)
     ok = r.status_code == 200
-    record("Catalog ingest – HTTP 200", ok, f"status={r.status_code}")
+    record("Catalog ingest - HTTP 200", ok, f"status={r.status_code}")
     if not ok:
         print(f"    Response: {r.text[:300]}")
         return None
@@ -141,19 +141,19 @@ def test_catalog_ingest(client: httpx.Client, artisan_id: str = "demo_artisan_00
 
     # ── Structure assertions ──────────────────────────────────────────
     record(
-        "Catalog ingest – has studio_image_base64",
+        "Catalog ingest - has studio_image_base64",
         "studio_image_base64" in body and len(body["studio_image_base64"]) > 100,
     )
     record(
-        "Catalog ingest – has raw_transcript",
+        "Catalog ingest - has raw_transcript",
         "raw_transcript" in body and len(body["raw_transcript"]) > 0,
     )
     record(
-        "Catalog ingest – has catalog_metadata",
+        "Catalog ingest - has catalog_metadata",
         "catalog_metadata" in body and isinstance(body["catalog_metadata"], dict),
     )
     record(
-        "Catalog ingest – has price_recommendation",
+        "Catalog ingest - has price_recommendation",
         "price_recommendation" in body and isinstance(body["price_recommendation"], dict),
     )
 
@@ -164,7 +164,7 @@ def test_catalog_ingest(client: httpx.Client, artisan_id: str = "demo_artisan_00
     try:
         img_bytes = base64.b64decode(body["studio_image_base64"])
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        # Sample four corners (should be white canvas — RGB ≥ 250)
+        # Sample four corners (should be white canvas - RGB ≥ 250)
         w, h = img.size
         corners = [
             img.getpixel((5, 5)),
@@ -176,19 +176,19 @@ def test_catalog_ingest(client: httpx.Client, artisan_id: str = "demo_artisan_00
             val[0] >= 245 and val[1] >= 245 and val[2] >= 245 for val in corners
         )
         record(
-            "Catalog ingest – studio image white background",
+            "Catalog ingest - studio image white background",
             all_white,
             f"corners={corners}",
         )
     except Exception as exc:
-        record("Catalog ingest – studio image white background", False, str(exc))
+        record("Catalog ingest - studio image white background", False, str(exc))
 
     # ── Price > cost floor ────────────────────────────────────────────
     pricing = body.get("price_recommendation", {})
     cost_floor = pricing.get("cost_floor", 0)
     rec_price = pricing.get("recommended_price", 0)
     record(
-        "Catalog ingest – price > cost floor",
+        "Catalog ingest - price > cost floor",
         rec_price > cost_floor and cost_floor >= 0,
         f"recommended={rec_price}, floor={cost_floor}",
     )
@@ -197,7 +197,7 @@ def test_catalog_ingest(client: httpx.Client, artisan_id: str = "demo_artisan_00
     min_c = pricing.get("min_market_corridor", 0)
     max_c = pricing.get("max_market_corridor", 0)
     record(
-        "Catalog ingest – corridor min < recommended < max",
+        "Catalog ingest - corridor min < recommended < max",
         min_c <= rec_price <= max_c,
         f"[{min_c}, {rec_price}, {max_c}]",
     )
@@ -228,22 +228,22 @@ def test_catalog_publish(client: httpx.Client, ingest_result: dict | None, artis
 
     r = client.post("/api/v1/catalog/publish", json=payload, timeout=TIMEOUT)
     ok = r.status_code == 200
-    record("Catalog publish – HTTP 200", ok, f"status={r.status_code}")
+    record("Catalog publish - HTTP 200", ok, f"status={r.status_code}")
     if not ok:
         print(f"    Response: {r.text[:300]}")
         return
 
     body = r.json()
     record(
-        "Catalog publish – product_id returned",
+        "Catalog publish - product_id returned",
         "product_id" in body and len(body["product_id"]) > 0,
     )
     record(
-        "Catalog publish – embedding stored",
+        "Catalog publish - embedding stored",
         body.get("embedding_stored") is True,
     )
     record(
-        "Catalog publish – success message",
+        "Catalog publish - success message",
         "success" in body.get("message", "").lower(),
     )
 
@@ -253,7 +253,7 @@ def test_catalog_publish(client: httpx.Client, ingest_result: dict | None, artis
 def test_rfq_aggregate(client: httpx.Client, clusters: list[dict]):
     """T4: POST /api/v1/rfq/aggregate splits units across artisans."""
     if not clusters:
-        record("RFQ aggregate – skipped (no clusters)", False, "no cluster data")
+        record("RFQ aggregate - skipped (no clusters)", False, "no cluster data")
         return
 
     cluster_id = clusters[0]["properties"]["id"]
@@ -268,7 +268,7 @@ def test_rfq_aggregate(client: httpx.Client, clusters: list[dict]):
 
     r = client.post("/api/v1/rfq/aggregate", json=payload, timeout=TIMEOUT)
     ok = r.status_code == 200
-    record("RFQ aggregate – HTTP 200", ok, f"status={r.status_code}")
+    record("RFQ aggregate - HTTP 200", ok, f"status={r.status_code}")
     if not ok:
         print(f"    Response: {r.text[:300]}")
         return
@@ -277,15 +277,15 @@ def test_rfq_aggregate(client: httpx.Client, clusters: list[dict]):
     allocations = body.get("allocations", [])
 
     record(
-        "RFQ aggregate – has rfq_id",
+        "RFQ aggregate - has rfq_id",
         "rfq_id" in body and len(body["rfq_id"]) > 0,
     )
     record(
-        "RFQ aggregate – status is ALLOCATED",
+        "RFQ aggregate - status is ALLOCATED",
         body.get("status") == "ALLOCATED",
     )
     record(
-        "RFQ aggregate – multiple artisan allocations",
+        "RFQ aggregate - multiple artisan allocations",
         len(allocations) >= 2,
         f"artisan_count={len(allocations)}",
     )
@@ -293,7 +293,7 @@ def test_rfq_aggregate(client: httpx.Client, clusters: list[dict]):
     # Units sum to target
     total_allocated = sum(a["allocated_units"] for a in allocations)
     record(
-        "RFQ aggregate – allocated units sum = target",
+        "RFQ aggregate - allocated units sum = target",
         total_allocated == 100,
         f"sum={total_allocated}",
     )
@@ -301,14 +301,14 @@ def test_rfq_aggregate(client: httpx.Client, clusters: list[dict]):
     # Each artisan has > 0 units
     all_positive = all(a["allocated_units"] > 0 for a in allocations)
     record(
-        "RFQ aggregate – every artisan gets > 0 units",
+        "RFQ aggregate - every artisan gets > 0 units",
         all_positive,
     )
 
     # Total value matches
     expected_value = 100 * 1500.0
     record(
-        "RFQ aggregate – total_value = units × price",
+        "RFQ aggregate - total_value = units × price",
         body.get("total_value") == expected_value,
         f"total_value={body.get('total_value')}",
     )
@@ -326,7 +326,7 @@ def test_demand_radar(client: httpx.Client):
         timeout=TIMEOUT,
     )
     ok = r.status_code == 200
-    record("Demand radar – HTTP 200", ok, f"status={r.status_code}")
+    record("Demand radar - HTTP 200", ok, f"status={r.status_code}")
     if not ok:
         return
 
@@ -334,7 +334,7 @@ def test_demand_radar(client: httpx.Client):
     alerts = body.get("alerts", [])
 
     record(
-        "Demand radar – has alerts",
+        "Demand radar - has alerts",
         len(alerts) >= 1,
         f"count={len(alerts)}",
     )
@@ -343,10 +343,10 @@ def test_demand_radar(client: httpx.Client):
         a = alerts[0]
         required = {"craft_category", "region", "search_count", "pct_change", "notification"}
         has_keys = required.issubset(a.keys())
-        record("Demand radar – alert schema valid", has_keys)
+        record("Demand radar - alert schema valid", has_keys)
 
         record(
-            "Demand radar – notification is non-empty",
+            "Demand radar - notification is non-empty",
             len(a.get("notification", "")) > 10,
         )
 
@@ -362,7 +362,7 @@ def main():
     print(f"{'═' * 64}\n")
 
     # ── Wait for backend readiness ────────────────────────────────────
-    print("⏳ Waiting for backend to become healthy …")
+    print(" Waiting for backend to become healthy ...")
     client = httpx.Client(base_url=BASE_URL, follow_redirects=True)
 
     for attempt in range(30):
@@ -375,7 +375,7 @@ def main():
             pass
         time.sleep(2)
     else:
-        print("   ❌ Backend did not become healthy in 60 s — aborting.\n")
+        print("    Backend did not become healthy in 60 s - aborting.\n")
         sys.exit(1)
 
     # ── Run test suites ───────────────────────────────────────────────

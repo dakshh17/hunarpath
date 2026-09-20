@@ -317,6 +317,7 @@ class ArtisanProvider extends ChangeNotifier {
         recommendedPrice: adjustedPrice,
         minMarketCorridor: lastIngestResult!.pricing.minMarketCorridor,
         maxMarketCorridor: lastIngestResult!.pricing.maxMarketCorridor,
+        studioImagePath: lastIngestResult!.studioImageBase64,
       );
 
       metrics = DashboardMetrics(

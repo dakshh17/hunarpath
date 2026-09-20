@@ -1,5 +1,5 @@
 """
-HunarPath – Pydantic v2 request / response schemas.
+HunarPath - Pydantic v2 request / response schemas.
 
 These mirror the ORM models and are used by FastAPI for automatic
 validation, serialization, and OpenAPI documentation.
@@ -221,7 +221,7 @@ class PublishResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# GET /api/v1/clusters/map  – GeoJSON
+# GET /api/v1/clusters/map  - GeoJSON
 # ---------------------------------------------------------------------------
 
 class ClusterGeoProperties(BaseModel):

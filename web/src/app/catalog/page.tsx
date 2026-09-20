@@ -9,28 +9,10 @@ import {
   Loader2,
   Sparkles,
   ImageOff,
+  Package,
 } from "lucide-react";
 import { fetchProducts, searchCatalog } from "@/lib/api";
 import type { CatalogProduct } from "@/types";
-
-// ─── Craft type to emoji mapping ─────────────────────────────────────────────
-
-const CRAFT_EMOJI: Record<string, string> = {
-  "Zari & Brocade": "🪡",
-  "Handloom Weaving": "🧣",
-  "Bell Metal Craft": "🐘",
-  Embroidery: "🪷",
-  "Block Printing": "🎨",
-  "Mirror Work": "👝",
-  "Wood Carving": "🪵",
-  Meenakari: "💎",
-  "Wrought Iron": "⚒️",
-  Terracotta: "🪔",
-};
-
-function craftEmoji(craftType: string): string {
-  return CRAFT_EMOJI[craftType] ?? "🎨";
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -83,7 +65,7 @@ export default function CatalogPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-saffron-500" />
-        <span className="ml-3 text-lg text-gray-600">Loading catalog…</span>
+        <span className="ml-3 text-lg text-gray-600">Loading catalog...</span>
       </div>
     );
   }
@@ -178,10 +160,23 @@ export default function CatalogPage() {
 function ProductCard({ product }: { product: CatalogProduct }) {
   return (
     <div className="card-elevated group flex flex-col transition hover:shadow-lg hover:-translate-y-0.5">
-      {/* Image placeholder */}
-      <div className="relative flex h-48 items-center justify-center rounded-xl bg-gradient-to-br from-gray-50 to-gray-100">
-        <span className="text-6xl">{craftEmoji(product.craft_type)}</span>
-        <span className="badge absolute right-2 top-2 bg-saffron-50 text-saffron-600">
+      {/* Image container */}
+      <div className="relative flex h-48 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100">
+        {product.studio_image_path ? (
+          <img
+            src={
+              product.studio_image_path.startsWith("data:") ||
+              product.studio_image_path.startsWith("http")
+                ? product.studio_image_path
+                : `data:image/webp;base64,${product.studio_image_path}`
+            }
+            alt={product.title_en}
+            className="h-full w-full object-cover rounded-xl"
+          />
+        ) : (
+          <Package className="h-12 w-12 text-gray-400 stroke-[1.5]" />
+        )}
+        <span className="badge absolute right-2 top-2 bg-saffron-50 text-saffron-600 shadow-sm">
           {product.craft_type}
         </span>
       </div>
@@ -192,7 +187,7 @@ function ProductCard({ product }: { product: CatalogProduct }) {
           {product.title_en}
         </h3>
 
-        <p className="mt-1 text-sm text-gray-500">{product.material}</p>
+        <p className="mt-1 text-sm text-gray-500 text-justify">{product.material}</p>
 
         {/* Artisan & cluster */}
         <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">

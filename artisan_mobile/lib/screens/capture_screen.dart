@@ -312,7 +312,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       case 2:
         return 'Step 2 · Speak (विवरण बोलें)';
       case 3:
-        return 'AI Studio Processing…';
+        return 'AI Studio Processing...';
       default:
         return 'Capture';
     }
@@ -485,7 +485,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                           ),
                         Text(
                           _isRecording
-                              ? 'बोलिए, हम सुन रहे हैं (Listening…)'
+                              ? 'बोलिए, हम सुन रहे हैं (Listening...)'
                               : 'विवरण (Product Description):',
                           style: TextStyle(
                             fontSize: 14,
@@ -525,7 +525,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                         ),
                         SizedBox(width: 12),
                         Text(
-                          'AI से लिख रहे हैं... (Transcribing with AI…)',
+                          'AI से लिख रहे हैं... (Transcribing with AI...)',
                           style: TextStyle(
                             fontSize: 15,
                             fontStyle: FontStyle.italic,
@@ -675,7 +675,7 @@ class _CaptureScreenState extends State<CaptureScreen>
             ),
             const SizedBox(height: 24),
             const Text(
-              'Creating Studio Lighting…',
+              'Creating Studio Lighting...',
               style: AppTheme.headlineMedium,
               textAlign: TextAlign.center,
             ),

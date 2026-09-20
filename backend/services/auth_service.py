@@ -1,5 +1,5 @@
 """
-HunarPath – Authentication service.
+HunarPath - Authentication service.
 
 Provides JWT token creation/verification and PIN hashing utilities.
 """

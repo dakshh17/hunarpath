@@ -171,7 +171,7 @@ function RFQPageInner() {
         <h1 className="text-3xl font-extrabold text-gray-900">
           Bulk Order Engine
         </h1>
-        <p className="mt-1 text-gray-500">
+        <p className="mt-1 text-gray-500 text-justify">
           Aggregate micro-artisans seamlessly for enterprise-scale fulfilment
         </p>
       </div>
@@ -201,7 +201,7 @@ function RFQPageInner() {
             {loadingClusters ? (
               <div className="flex items-center gap-2 text-gray-400 py-3">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading clusters…
+                Loading clusters...
               </div>
             ) : (
               <select
@@ -211,7 +211,7 @@ function RFQPageInner() {
               >
                 {clusters.map((c) => (
                   <option key={c.properties.id} value={c.properties.id}>
-                    {c.properties.name} — {c.properties.primary_craft}
+                    {c.properties.name} - {c.properties.primary_craft}
                   </option>
                 ))}
               </select>
@@ -268,7 +268,7 @@ function RFQPageInner() {
               value={customSpecs}
               onChange={(e) => setCustomSpecs(e.target.value)}
               rows={3}
-              placeholder="Dimensions, colours, branding instructions…"
+              placeholder="Dimensions, colours, branding instructions..."
               className="input-field resize-none"
             />
           </div>
@@ -290,7 +290,7 @@ function RFQPageInner() {
             ) : (
               <ShoppingCart className="h-5 w-5" />
             )}
-            {submitting ? "Allocating…" : "Submit Order Request"}
+            {submitting ? "Allocating..." : "Submit Order Request"}
           </button>
         </div>
 

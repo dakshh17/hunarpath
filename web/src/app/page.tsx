@@ -44,7 +44,7 @@ export default function HomePage() {
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
           Hunar<span className="text-saffron-500">Path</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600 text-justify">
           India&apos;s AI-powered bridge between heritage artisan clusters and
           global buyers. Fair pricing, transparent supply chains, zero
           middlemen.
@@ -67,7 +67,7 @@ export default function HomePage() {
             <h2 className="text-lg font-bold text-gray-900 group-hover:text-saffron-500 transition">
               {title}
             </h2>
-            <p className="mt-2 text-sm text-gray-500">{desc}</p>
+            <p className="mt-2 text-sm text-gray-500 text-justify">{desc}</p>
           </Link>
         ))}
       </div>

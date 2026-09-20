@@ -1,5 +1,5 @@
 """
-HunarPath – Dynamic Pricing Assistant.
+HunarPath - Dynamic Pricing Assistant.
 
 Computes a fair recommended retail price for handcrafted products using
 a cost-plus methodology augmented by:
@@ -36,7 +36,7 @@ MODEL_PATH: Path = Path(
     os.getenv("PRICING_MODEL_PATH", "models/xgb_pricing.pkl")
 )
 
-# Craft rarity index – higher values indicate rarer / more prestigious crafts
+# Craft rarity index - higher values indicate rarer / more prestigious crafts
 CRAFT_RARITY_INDEX: dict[str, float] = {
     "Zari & Brocade": 1.45,
     "Meenakari": 1.40,
@@ -76,7 +76,7 @@ def _try_load_xgb():
 
     if not MODEL_PATH.exists():
         logger.info(
-            "No XGBoost pricing model found at '%s' – using heuristic.", MODEL_PATH
+            "No XGBoost pricing model found at '%s' - using heuristic.", MODEL_PATH
         )
         return
 
@@ -85,7 +85,7 @@ def _try_load_xgb():
             _xgb_model = pickle.load(fh)
         logger.info("Loaded XGBoost pricing model from '%s'.", MODEL_PATH)
     except Exception:
-        logger.exception("Failed to load XGBoost model – falling back to heuristic.")
+        logger.exception("Failed to load XGBoost model - falling back to heuristic.")
         _xgb_model = None
 
 
@@ -104,7 +104,7 @@ def _heuristic_price(
 
         recommended = (raw_cost + labor_cost) × rarity × seasonal × margin_factor
 
-    The margin_factor of 1.6 targets a ~35–40 % artisan margin after
+    The margin_factor of 1.6 targets a ~35-40 % artisan margin after
     platform fees.
     """
     margin_factor = 1.60
@@ -129,7 +129,7 @@ def _xgb_price(
         prediction = float(_xgb_model.predict(features)[0])
         return round(max(prediction, raw_cost + labor_cost), 2)
     except Exception:
-        logger.exception("XGBoost prediction failed – using heuristic fallback.")
+        logger.exception("XGBoost prediction failed - using heuristic fallback.")
         return None
 
 
@@ -160,12 +160,12 @@ def calculate_price_recommendation(
     Returns
     -------
     dict
-        ``cost_floor``            – absolute minimum viable price.
-        ``recommended_price``     – AI/heuristic suggested retail price.
-        ``min_market_corridor``   – lower bound of the fair-trade corridor.
-        ``max_market_corridor``   – upper bound of the fair-trade corridor.
-        ``net_artisan_margin``    – estimated artisan take-home after fees.
-        ``pricing_method``        – ``"xgboost"`` or ``"heuristic"``.
+        ``cost_floor``            - absolute minimum viable price.
+        ``recommended_price``     - AI/heuristic suggested retail price.
+        ``min_market_corridor``   - lower bound of the fair-trade corridor.
+        ``max_market_corridor``   - upper bound of the fair-trade corridor.
+        ``net_artisan_margin``    - estimated artisan take-home after fees.
+        ``pricing_method``        - ``"xgboost"`` or ``"heuristic"``.
     """
     labor_cost = labor_days * DAILY_WAGE_RATE
     cost_floor = round(raw_cost + labor_cost, 2)

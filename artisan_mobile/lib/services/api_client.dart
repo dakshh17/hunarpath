@@ -10,7 +10,7 @@ import '../models/models.dart';
 ///
 /// All methods include defensive error handling and return typed models.
 class ApiClient {
-  /// Backend base URL – use 10.0.2.2 for Android emulator → host localhost.
+  /// Backend base URL - use 10.0.2.2 for Android emulator to host localhost.
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://shilpsetu-1.onrender.com',
@@ -219,7 +219,7 @@ class ApiClient {
       final streamedResponse = await _client.send(request).timeout(
         const Duration(seconds: 40),
         onTimeout: () {
-          throw ApiException(
+          throw const ApiException(
             statusCode: 408,
             message: 'Processing timed out. Please try again with a clear photo.',
           );

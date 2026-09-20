@@ -1,9 +1,9 @@
 """
-HunarPath – Database engine & session configuration.
+HunarPath - Database engine & session configuration.
 
 Supports two modes:
-  1. PostgreSQL + pgvector (production) – when DATABASE_URL env var is set.
-  2. SQLite (local dev fallback)     – automatic when DATABASE_URL is absent.
+  1. PostgreSQL + pgvector (production) - when DATABASE_URL env var is set.
+  2. SQLite (local dev fallback)     - automatic when DATABASE_URL is absent.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ async_session_factory = async_sessionmaker(
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency – yields an async database session."""
+    """FastAPI dependency - yields an async database session."""
     async with async_session_factory() as session:
         try:
             yield session

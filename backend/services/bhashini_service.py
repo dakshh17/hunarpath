@@ -1,5 +1,5 @@
 """
-HunarPath – Speech Recognition Engine (Groq Whisper & Bhashini ULCA).
+HunarPath - Speech Recognition Engine (Groq Whisper & Bhashini ULCA).
 
 Provides high-accuracy Indic-language speech-to-text using Groq's whisper-large-v3-turbo
 with fallback to Bhashini ULCA ASR. Never injects hardcoded fake products.

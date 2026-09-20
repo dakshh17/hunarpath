@@ -130,6 +130,7 @@ class CatalogMetadata {
 /// Full response from /api/v1/catalog/ingest.
 class IngestResult {
   final Uint8List studioImageBytes;
+  final String studioImageBase64;
   final String rawTranscript;
   final CatalogMetadata catalog;
   final PriceRecommendation pricing;
@@ -137,6 +138,7 @@ class IngestResult {
 
   const IngestResult({
     required this.studioImageBytes,
+    required this.studioImageBase64,
     required this.rawTranscript,
     required this.catalog,
     required this.pricing,
@@ -147,6 +149,7 @@ class IngestResult {
     final imageB64 = json['studio_image_base64'] as String;
     return IngestResult(
       studioImageBytes: base64Decode(imageB64),
+      studioImageBase64: imageB64,
       rawTranscript: json['raw_transcript'] as String,
       catalog: CatalogMetadata.fromJson(
         json['catalog_metadata'] as Map<String, dynamic>,
