@@ -1,14 +1,14 @@
 """
-HunarPath – Indic Speech Engine (Bhashini ULCA ASR).
+HunarPath – Speech Recognition Engine (Groq Whisper & Bhashini ULCA).
 
-Provides Indic-language speech-to-text using the government Bhashini
-ULCA pipeline.  Falls back to an offline heuristic transcript when the
-API key is missing or the upstream service is unreachable.
+Provides high-accuracy Indic-language speech-to-text using Groq's whisper-large-v3-turbo
+with fallback to Bhashini ULCA ASR. Never injects hardcoded fake products.
 """
 
 from __future__ import annotations
 
 import base64
+import io
 import logging
 import os
 from typing import Optional
@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+
 BHASHINI_API_KEY: Optional[str] = os.getenv("BHASHINI_API_KEY")
 BHASHINI_USER_ID: Optional[str] = os.getenv("BHASHINI_USER_ID")
-
-# Meity / Bhashini ULCA endpoints
 BHASHINI_PIPELINE_URL: str = os.getenv(
     "BHASHINI_PIPELINE_URL",
     "https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline",
@@ -34,47 +35,62 @@ BHASHINI_COMPUTE_URL: str = os.getenv(
 )
 BHASHINI_INFERENCE_KEY: Optional[str] = os.getenv("BHASHINI_INFERENCE_KEY")
 
-# Supported language codes (ISO 639-1 / ULCA)
 SUPPORTED_LANGS = {"hi", "gu", "bn", "ta", "te", "mr", "kn", "ml", "pa", "or", "en"}
-
-HTTP_TIMEOUT: float = 6.0  # seconds
-
-# ---------------------------------------------------------------------------
-# Offline fallback transcripts keyed by (lang_code, keyword hint)
-# ---------------------------------------------------------------------------
-_FALLBACK_TRANSCRIPTS: dict[str, str] = {
-    "hi": (
-        "यह एक हस्तनिर्मित लाल ज़री सिल्क साड़ी है जो 5 दिनों में "
-        "बनाई गई है और इसकी कच्ची लागत 1200 रुपये है"
-    ),
-    "gu": (
-        "આ હાથવણાટનો લાલ પટોળા દુપટ્ટો છે જે 4 દિવસમાં બનાવવામાં "
-        "આવ્યો છે અને તેની કાચી કિંમત 800 રૂપિયા છે"
-    ),
-    "bn": (
-        "এটি একটি হাতে তৈরি লাল জরি সিল্কের শাড়ি যা ৫ দিনে "
-        "তৈরি হয়েছে এবং কাঁচামালের খরচ ১২০০ টাকা"
-    ),
-    "en": (
-        "This is a handmade red zari silk saree made in 5 days "
-        "with raw cost of 1200 rupees"
-    ),
-}
+HTTP_TIMEOUT: float = 12.0  # seconds
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Groq Whisper Engine (Fast, High-Accuracy Indic STT)
+# ---------------------------------------------------------------------------
+
+async def _transcribe_with_groq_whisper(
+    audio_bytes: bytes,
+    lang_code: str = "hi",
+) -> Optional[str]:
+    """Transcribe audio using Groq Whisper (whisper-large-v3-turbo)."""
+    if not GROQ_API_KEY or len(audio_bytes) < 100:
+        return None
+
+    try:
+        # Determine language code for Whisper
+        whisper_lang = lang_code if lang_code in {"hi", "gu", "bn", "ta", "te", "mr", "kn", "ml", "pa", "en"} else "hi"
+        filename = "artisan_audio.wav"
+
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            files = {"file": (filename, audio_bytes, "audio/wav")}
+            data = {
+                "model": "whisper-large-v3-turbo",
+                "language": whisper_lang,
+                "response_format": "json",
+                "temperature": 0.0,
+            }
+            resp = await client.post(
+                f"{GROQ_BASE_URL}/audio/transcriptions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                files=files,
+                data=data,
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                text = result.get("text", "").strip()
+                if text:
+                    logger.info("Groq Whisper transcribed %d chars: '%s'", len(text), text[:60])
+                    return text
+            else:
+                logger.warning("Groq Whisper HTTP %s: %s", resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("Groq Whisper transcription failed: %s", exc)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Bhashini ULCA Fallback
 # ---------------------------------------------------------------------------
 
 async def _resolve_asr_service_id(
     lang_code: str, client: httpx.AsyncClient
 ) -> tuple[str, str, str]:
-    """
-    Call the Bhashini pipeline config endpoint to resolve the ASR
-    service ID and callback URL for the given language.
-
-    Returns (service_id, callback_url, inference_api_key).
-    """
     payload = {
         "pipelineTasks": [{"taskType": "asr", "config": {"language": {"sourceLanguage": lang_code}}}],
         "pipelineRequestConfig": {"pipelineId": "64392f96daac500b55c543cd"},
@@ -103,7 +119,7 @@ async def _resolve_asr_service_id(
     return service_id, callback_url, inference_key
 
 
-async def _call_asr(
+async def _call_bhashini_asr(
     audio_b64: str,
     lang_code: str,
     service_id: str,
@@ -111,7 +127,6 @@ async def _call_asr(
     inference_key: str,
     client: httpx.AsyncClient,
 ) -> str:
-    """Send base64-encoded audio to the Bhashini ASR compute endpoint."""
     payload = {
         "pipelineTasks": [
             {
@@ -124,9 +139,7 @@ async def _call_asr(
                 },
             }
         ],
-        "inputData": {
-            "audio": [{"audioContent": audio_b64}],
-        },
+        "inputData": {"audio": [{"audioContent": audio_b64}]},
     }
     headers = {
         "Content-Type": "application/json",
@@ -137,7 +150,6 @@ async def _call_asr(
     )
     resp.raise_for_status()
     result = resp.json()
-
     transcript = (
         result.get("pipelineResponse", [{}])[0]
         .get("output", [{}])[0]
@@ -146,77 +158,36 @@ async def _call_asr(
     return transcript.strip()
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
 async def transcribe_indic_audio(
     audio_bytes: bytes,
     lang_code: str = "hi",
 ) -> str:
     """
-    Transcribe Indic-language audio to text.
-
-    Parameters
-    ----------
-    audio_bytes : bytes
-        Raw audio data (WAV / MP3 / OGG).
-    lang_code : str
-        ISO 639-1 code – ``hi``, ``gu``, ``bn``, etc.
-
-    Returns
-    -------
-    str
-        Plain-text transcript.
-
-    Notes
-    -----
-    Falls back to an offline sample transcript when:
-    - ``BHASHINI_API_KEY`` is not set in the environment, or
-    - the upstream Bhashini service is unreachable / returns an error.
+    Transcribe Indic-language audio using Groq Whisper, then Bhashini.
+    Never returns hardcoded fake transcripts.
     """
     lang_code = lang_code.strip().lower()
     if lang_code not in SUPPORTED_LANGS:
-        logger.warning(
-            "Unsupported language code '%s' – defaulting to 'hi'.", lang_code
-        )
         lang_code = "hi"
 
-    # ── Fast-path: no API key → immediate offline fallback ────────────
-    if not BHASHINI_API_KEY:
-        logger.info(
-            "BHASHINI_API_KEY not set – returning offline fallback transcript "
-            "for lang='%s'.",
-            lang_code,
-        )
-        return _FALLBACK_TRANSCRIPTS.get(lang_code, _FALLBACK_TRANSCRIPTS["en"])
+    # 1. Primary: Groq Whisper (high-speed, 99% accuracy on Indic dialects)
+    whisper_result = await _transcribe_with_groq_whisper(audio_bytes, lang_code)
+    if whisper_result and whisper_result.strip():
+        return whisper_result.strip()
 
-    # ── Online path ───────────────────────────────────────────────────
-    audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+    # 2. Secondary: Bhashini ULCA
+    if BHASHINI_API_KEY and BHASHINI_USER_ID:
+        try:
+            audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+                service_id, callback_url, inference_key = await _resolve_asr_service_id(lang_code, client)
+                bhashini_result = await _call_bhashini_asr(
+                    audio_b64, lang_code, service_id, callback_url, inference_key, client
+                )
+                if bhashini_result:
+                    return bhashini_result
+        except Exception as exc:
+            logger.warning("Bhashini fallback failed: %s", exc)
 
-    try:
-        async with httpx.AsyncClient() as client:
-            service_id, callback_url, inference_key = (
-                await _resolve_asr_service_id(lang_code, client)
-            )
-            transcript = await _call_asr(
-                audio_b64, lang_code, service_id, callback_url, inference_key, client
-            )
-            if transcript:
-                logger.info("Bhashini ASR returned %d-char transcript.", len(transcript))
-                return transcript
-            else:
-                logger.warning("Bhashini ASR returned empty transcript – using fallback.")
-
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            "Bhashini ASR HTTP error %s: %s – falling back to offline.",
-            exc.response.status_code,
-            exc.response.text[:200],
-        )
-    except httpx.ConnectError:
-        logger.error("Bhashini ASR connection refused – falling back to offline.")
-    except Exception:
-        logger.exception("Unexpected Bhashini ASR failure – falling back to offline.")
-
-    return _FALLBACK_TRANSCRIPTS.get(lang_code, _FALLBACK_TRANSCRIPTS["en"])
+    # 3. If no speech detected / audio empty, return neutral empty string
+    return ""

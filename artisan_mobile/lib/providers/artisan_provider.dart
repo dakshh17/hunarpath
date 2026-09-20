@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,7 @@ class ArtisanProvider extends ChangeNotifier {
   String? processingError;
 
   IngestResult? lastIngestResult;
+  Uint8List? lastRawImageBytes;
   double adjustedPrice = 0.0;
 
   // ── Demand radar ───────────────────────────────────────────────────
@@ -191,6 +193,7 @@ class ArtisanProvider extends ChangeNotifier {
     orders = [];
     demandAlerts = [];
     lastIngestResult = null;
+    lastRawImageBytes = null;
     notifyListeners();
   }
 
@@ -239,6 +242,13 @@ class ArtisanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Speech Transcription ───────────────────────────────────────────
+
+  /// Direct audio transcription using Groq Whisper via backend.
+  Future<String> transcribeAudio(File audioFile) async {
+    return _api.transcribeAudio(audioFile, language: profile.dialect);
+  }
+
   // ── Catalog Ingest ─────────────────────────────────────────────────
 
   /// Run the full ingest pipeline: image + live transcript / audio → AI services.
@@ -254,6 +264,7 @@ class ArtisanProvider extends ChangeNotifier {
     await _audio.processingStarted();
 
     try {
+      lastRawImageBytes = await imageFile.readAsBytes();
       final result = await _api.ingestProduct(
         imageFile: imageFile,
         audioFile: audioFile,

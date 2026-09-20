@@ -70,23 +70,67 @@ def _remove_background(image_bytes: bytes) -> np.ndarray:
         return cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGBA)
 
 
+def auto_white_balance(bgr: np.ndarray) -> np.ndarray:
+    """
+    Automatic Gray World White Balance to eliminate dull yellow incandescent
+    or fluorescent lighting typical of rural artisan workshops.
+    """
+    b, g, r = cv2.split(bgr.astype(np.float32))
+    b_avg = float(np.mean(b))
+    g_avg = float(np.mean(g))
+    r_avg = float(np.mean(r))
+    avg = (b_avg + g_avg + r_avg) / 3.0
+    if b_avg > 1e-3 and g_avg > 1e-3 and r_avg > 1e-3:
+        b = np.clip(b * (1.0 + 0.85 * ((avg / b_avg) - 1.0)), 0, 255)
+        g = np.clip(g * (1.0 + 0.85 * ((avg / g_avg) - 1.0)), 0, 255)
+        r = np.clip(r * (1.0 + 0.85 * ((avg / r_avg) - 1.0)), 0, 255)
+    return cv2.merge([b, g, r]).astype(np.uint8)
+
+
+def enhance_studio_lighting(bgr: np.ndarray) -> np.ndarray:
+    """
+    Transforms a raw workshop photograph with professional studio lighting:
+    1. Automatic White Balance (eliminates yellow/green casts).
+    2. Dynamic Range / Shadow Lift via gamma curve (simulates studio fill light).
+    3. CLAHE on LAB L-channel for micro-contrast on weaves/carvings.
+    4. Chroma/Vibrancy tuning in HSV (+15%) so natural dyes pop.
+    5. Detail Sharpening (unsharp mask) simulating a prime studio lens.
+    """
+    # 1. White balance
+    wb = auto_white_balance(bgr)
+
+    # 2. Exposure & CLAHE in LAB
+    lab = cv2.cvtColor(wb, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=CLAHE_CLIP_LIMIT, tileGridSize=CLAHE_GRID)
+    l = clahe.apply(l)
+
+    # Soft studio fill light (gamma 0.88)
+    l_float = l.astype(np.float32) / 255.0
+    l_boosted = np.power(l_float, 0.88) * 255.0
+    l = np.clip(l_boosted, 0, 255).astype(np.uint8)
+    lab = cv2.merge([l, a, b])
+    bgr_adj = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+    # 3. Saturation boost (+15%)
+    hsv = cv2.cvtColor(bgr_adj, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.15, 0, 255)
+    sat_adj = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+    # 4. Detail Sharpening (unsharp mask)
+    gaussian = cv2.GaussianBlur(sat_adj, (0, 0), 2.0)
+    sharpened = cv2.addWeighted(sat_adj, 1.25, gaussian, -0.25, 0)
+    return sharpened
+
+
 def _apply_clahe(rgba: np.ndarray) -> np.ndarray:
     """
     Apply CLAHE on the L-channel of the LAB colour space to correct
     harsh and uneven workshop lighting while preserving colour fidelity.
     """
     bgr = cv2.cvtColor(rgba[:, :, :3], cv2.COLOR_RGB2BGR)
-    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
-    l_ch, a_ch, b_ch = cv2.split(lab)
-
-    clahe = cv2.createCLAHE(
-        clipLimit=CLAHE_CLIP_LIMIT, tileGridSize=CLAHE_GRID
-    )
-    l_ch = clahe.apply(l_ch)
-
-    lab = cv2.merge([l_ch, a_ch, b_ch])
-    bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    enhanced_bgr = enhance_studio_lighting(bgr)
+    rgb = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB)
 
     # Re-attach original alpha channel
     enhanced = np.dstack([rgb, rgba[:, :, 3]])

@@ -229,6 +229,38 @@ async def catalog_ingest(
 
 
 # ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║  POST /api/v1/speech/transcribe                                         ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+@app.post(
+    "/api/v1/speech/transcribe",
+    summary="Transcribe artisan voice note using Groq Whisper",
+    tags=["Speech"],
+)
+async def speech_transcribe(
+    audio: UploadFile = File(..., description="Artisan voice note audio file"),
+    language: str = Form("hi", description="ISO 639-1 dialect code"),
+):
+    """
+    Direct transcription endpoint using Groq Whisper (whisper-large-v3-turbo).
+    Provides rapid (<500ms) speech recognition for Indian dialects.
+    """
+    audio_bytes = await audio.read()
+    if not audio_bytes or len(audio_bytes) < 50:
+        return {"transcript": ""}
+
+    try:
+        text = await asyncio.wait_for(
+            transcribe_indic_audio(audio_bytes, lang_code=language),
+            timeout=10.0,
+        )
+        return {"transcript": text}
+    except Exception as exc:
+        logger.warning("Speech transcription endpoint failed (%s)", exc)
+        return {"transcript": ""}
+
+
+# ╔═══════════════════════════════════════════════════════════════════════════╗
 # ║  POST /api/v1/catalog/publish                                           ║
 # ╚═══════════════════════════════════════════════════════════════════════════╝
 

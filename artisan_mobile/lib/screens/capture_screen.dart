@@ -35,6 +35,7 @@ class _CaptureScreenState extends State<CaptureScreen>
   File? _recordedAudio;
   bool _isRecording = false;
   bool _speechEnabled = false;
+  bool _isTranscribing = false;
 
   String _liveTranscript = '';
   final _transcriptController = TextEditingController();
@@ -61,13 +62,7 @@ class _CaptureScreenState extends State<CaptureScreen>
     try {
       _speechEnabled = await _speech.initialize(
         onError: (val) => debugPrint('SpeechToText Error: $val'),
-        onStatus: (val) {
-          if (val == 'done' || val == 'notListening') {
-            if (mounted && _isRecording) {
-              setState(() => _isRecording = false);
-            }
-          }
-        },
+        onStatus: (val) => debugPrint('SpeechToText Status: $val'),
       );
       if (mounted) setState(() {});
     } catch (e) {
@@ -136,40 +131,61 @@ class _CaptureScreenState extends State<CaptureScreen>
 
   Future<void> _toggleRecording() async {
     if (_isRecording) {
-      // Stop speech recognition
+      // ── Stop recording ─────────────────────────────────────────────
+      setState(() => _isRecording = false);
+
       if (_speech.isListening) {
         await _speech.stop();
       }
 
-      // Stop audio recording
       String? audioPath;
       try {
         audioPath = await _recorder.stop();
       } catch (_) {}
 
-      setState(() {
-        if (audioPath != null) {
-          _recordedAudio = File(audioPath);
+      if (audioPath != null) {
+        _recordedAudio = File(audioPath);
+      }
+
+      if (_liveTranscript.trim().isNotEmpty) {
+        _transcriptController.text = _liveTranscript.trim();
+      }
+
+      // If on-device speech captured nothing, but audio was recorded, transcribe via Groq Whisper backend
+      if (_transcriptController.text.trim().isEmpty && _recordedAudio != null) {
+        if (!mounted) return;
+        setState(() => _isTranscribing = true);
+        try {
+          final provider = context.read<ArtisanProvider>();
+          final text = await provider.transcribeAudio(_recordedAudio!);
+          if (text.trim().isNotEmpty && mounted) {
+            setState(() {
+              _liveTranscript = text.trim();
+              _transcriptController.text = text.trim();
+            });
+          }
+        } catch (e) {
+          debugPrint('Backend transcription fallback error: $e');
+        } finally {
+          if (mounted) setState(() => _isTranscribing = false);
         }
-        _isRecording = false;
-        if (_liveTranscript.isNotEmpty) {
-          _transcriptController.text = _liveTranscript;
-        }
-      });
+      }
     } else {
-      // Start recording
+      // ── Start recording ────────────────────────────────────────────
       setState(() {
         _liveTranscript = '';
         _transcriptController.clear();
+        _recordedAudio = null;
         _isRecording = true;
       });
 
       final dialect = context.read<ArtisanProvider>().profile.dialect;
       final localeId = _getLocaleForDialect(dialect);
 
+      bool listened = false;
       if (_speechEnabled) {
         try {
-          await _speech.listen(
+          listened = await _speech.listen(
             localeId: localeId,
             onResult: (result) {
               if (mounted) {
@@ -183,30 +199,36 @@ class _CaptureScreenState extends State<CaptureScreen>
               listenMode: stt.ListenMode.dictation,
               partialResults: true,
               cancelOnError: false,
+              listenFor: const Duration(minutes: 2),
+              pauseFor: const Duration(seconds: 10),
             ),
           );
         } catch (e) {
           debugPrint('Speech listen error: $e');
+          listened = false;
         }
       }
 
-      // Concurrently record audio
-      try {
-        final tempDir = await getTemporaryDirectory();
-        final filePath =
-            '${tempDir.path}/artisan_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
-        if (await _recorder.hasPermission()) {
-          await _recorder.start(
-            const RecordConfig(
-              encoder: AudioEncoder.wav,
-              sampleRate: 16000,
-              numChannels: 1,
-            ),
-            path: filePath,
-          );
+      // If on-device speech recognizer is not active/supported on this device,
+      // record audio so we can transcribe with backend Groq Whisper upon stopping!
+      if (!listened) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final filePath =
+              '${tempDir.path}/artisan_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+          if (await _recorder.hasPermission()) {
+            await _recorder.start(
+              const RecordConfig(
+                encoder: AudioEncoder.wav,
+                sampleRate: 16000,
+                numChannels: 1,
+              ),
+              path: filePath,
+            );
+          }
+        } catch (e) {
+          debugPrint('Audio recorder error: $e');
         }
-      } catch (e) {
-        debugPrint('Audio recorder error: $e');
       }
     }
   }
@@ -447,45 +469,104 @@ class _CaptureScreenState extends State<CaptureScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (_isRecording)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+                    Row(
+                      children: [
+                        if (_isRecording)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        Text(
+                          _isRecording
+                              ? 'बोलिए, हम सुन रहे हैं (Listening…)'
+                              : 'विवरण (Product Description):',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _isRecording ? Colors.red.shade700 : AppTheme.slate,
+                          ),
                         ),
-                      ),
-                    Text(
-                      _isRecording
-                          ? 'बोलिए, हम सुन रहे हैं (Listening…)'
-                          : 'विवरण (Live Transcript):',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _isRecording ? Colors.red.shade700 : AppTheme.slate,
-                      ),
+                      ],
                     ),
+                    if (!_isRecording && _transcriptController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 20, color: AppTheme.slate),
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          setState(() {
+                            _liveTranscript = '';
+                            _transcriptController.clear();
+                            _recordedAudio = null;
+                          });
+                        },
+                      ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  _liveTranscript.isNotEmpty
-                      ? _liveTranscript
-                      : (_transcriptController.text.isNotEmpty
-                          ? _transcriptController.text
-                          : 'माइक दबाकर उत्पाद का नाम, सामग्री और समय बताएं... (Tap mic and speak)'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    height: 1.4,
-                    fontWeight: _liveTranscript.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
-                    color: _liveTranscript.isNotEmpty || _transcriptController.text.isNotEmpty
-                        ? const Color(0xFF1E293B)
-                        : Colors.grey.shade500,
+                if (_isTranscribing)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppTheme.saffron,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'AI से लिख रहे हैं... (Transcribing with AI…)',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontStyle: FontStyle.italic,
+                            color: AppTheme.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_isRecording)
+                  Text(
+                    _liveTranscript.isNotEmpty
+                        ? _liveTranscript
+                        : 'सुन रहे हैं... कृपया बोलें (Listening... please speak)',
+                    style: TextStyle(
+                      fontSize: 18,
+                      height: 1.4,
+                      fontWeight: FontWeight.w600,
+                      color: _liveTranscript.isNotEmpty
+                          ? const Color(0xFF1E293B)
+                          : Colors.grey.shade500,
+                    ),
+                  )
+                else
+                  TextField(
+                    controller: _transcriptController,
+                    maxLines: 4,
+                    minLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'माइक दबाकर बोलें या यहाँ लिखें (Tap mic to speak or type here)...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      height: 1.4,
+                      color: Color(0xFF1E293B),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

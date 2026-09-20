@@ -45,6 +45,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _publish(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     setState(() => _isPublishing = true);
     final provider = context.read<ArtisanProvider>();
     final success = await provider.publishProduct();
@@ -55,9 +57,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
     if (success) {
       // Pop back to home
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      navigator.popUntil((route) => route.isFirst);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         const SnackBar(
           content: Text('Publishing failed – please try again'),
           backgroundColor: AppTheme.dangerRed,
@@ -94,6 +96,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 children: [
                   // ── Image comparison slider ────────────────────────
                   _ImageComparisonSlider(
+                    rawBytes: provider.lastRawImageBytes,
                     studioBytes: result.studioImageBytes,
                     sliderValue: _sliderValue,
                     onChanged: (v) => setState(() => _sliderValue = v),
@@ -195,13 +198,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
 // WIDGETS
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Interactive Raw vs Studio image comparison slider.
+/// Interactive Raw vs Studio image comparison slider with real split-screen reveal.
 class _ImageComparisonSlider extends StatelessWidget {
+  final Uint8List? rawBytes;
   final Uint8List studioBytes;
   final double sliderValue;
   final ValueChanged<double> onChanged;
 
   const _ImageComparisonSlider({
+    this.rawBytes,
     required this.studioBytes,
     required this.sliderValue,
     required this.onChanged,
@@ -211,52 +216,133 @@ class _ImageComparisonSlider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          height: 300,
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLg),
-            color: Colors.grey.shade100,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Studio image (background)
-              Image.memory(
-                studioBytes,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.image_not_supported, size: 48),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth - 32;
+            final splitX = (width * sliderValue.clamp(0.0, 1.0)).clamp(0.0, width);
+
+            return Container(
+              height: 320,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusLg),
+                color: Colors.grey.shade50,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: GestureDetector(
+                onHorizontalDragUpdate: (details) {
+                  final newRatio = (details.localPosition.dx / width).clamp(0.0, 1.0);
+                  onChanged(newRatio);
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Base layer: Raw photograph (or studio if raw unavailable)
+                    if (rawBytes != null && rawBytes!.isNotEmpty)
+                      Image.memory(
+                        rawBytes!,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image_rounded, size: 48),
+                        ),
+                      )
+                    else
+                      Image.memory(
+                        studioBytes,
+                        fit: BoxFit.contain,
+                      ),
+
+                    // Top layer: Studio photograph clipped to slider position
+                    ClipRect(
+                      clipper: _LeftSplitClipper(splitX),
+                      child: Image.memory(
+                        studioBytes,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+
+                    // Vertical divider line
+                    Positioned(
+                      left: splitX - 1.5,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.35),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Circular center drag handle
+                    Positioned(
+                      left: splitX - 18,
+                      top: 142,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.saffron,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.35),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.compare_arrows_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+
+                    // Top labels
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: _ImageLabel(
+                        label: '✨ Studio (AI)',
+                        active: sliderValue > 0.3,
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: _ImageLabel(
+                        label: '📸 Raw (Workshop)',
+                        active: sliderValue < 0.7,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // Overlay label
-              Positioned(
-                top: 12,
-                left: 12,
-                child: _ImageLabel(
-                  label: 'Raw',
-                  active: sliderValue < 0.5,
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: _ImageLabel(
-                  label: 'Studio',
-                  active: sliderValue >= 0.5,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
-        // Slider
+        // Slider control below
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             children: [
-              const Icon(Icons.photo_camera_back_rounded,
-                  color: AppTheme.slate, size: 24),
+              const Text('Raw', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.slate)),
+              const SizedBox(width: 8),
               Expanded(
                 child: Slider(
                   value: sliderValue,
@@ -265,14 +351,27 @@ class _ImageComparisonSlider extends StatelessWidget {
                   inactiveColor: AppTheme.saffron.withOpacity(0.2),
                 ),
               ),
-              const Icon(Icons.auto_fix_high_rounded,
-                  color: AppTheme.saffron, size: 24),
+              const SizedBox(width: 8),
+              const Text('Studio ✨', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.saffron)),
             ],
           ),
         ),
       ],
     );
   }
+}
+
+class _LeftSplitClipper extends CustomClipper<Rect> {
+  final double splitX;
+  _LeftSplitClipper(this.splitX);
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTWH(0, 0, splitX, size.height);
+  }
+
+  @override
+  bool shouldReclip(_LeftSplitClipper oldClipper) => oldClipper.splitX != splitX;
 }
 
 class _ImageLabel extends StatelessWidget {

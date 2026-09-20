@@ -247,6 +247,48 @@ class ApiClient {
   }
 
   // ─────────────────────────────────────────────────────────────────
+  // POST /api/v1/speech/transcribe
+  // ─────────────────────────────────────────────────────────────────
+
+  /// Transcribes recorded voice note using Groq Whisper via backend.
+  Future<String> transcribeAudio(
+    File audioFile, {
+    String language = 'hi',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/api/v1/speech/transcribe');
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['language'] = language;
+
+    request.files.add(await http.MultipartFile.fromPath(
+      'audio',
+      audioFile.path,
+      contentType: MediaType('audio', 'wav'),
+    ));
+
+    if (_authToken != null) {
+      request.headers['Authorization'] = 'Bearer $_authToken';
+    }
+
+    try {
+      final streamedResponse = await _client.send(request).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () {
+          throw const ApiException(
+            statusCode: 408,
+            message: 'Transcription timed out.',
+          );
+        },
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return json['transcript'] as String? ?? '';
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  // ─────────────────────────────────────────────────────────────────
   // POST /api/v1/catalog/publish
   // ─────────────────────────────────────────────────────────────────
 
